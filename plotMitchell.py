@@ -10,11 +10,7 @@ import sys
 #want the df to hold group names instead of a numerical id for the group names
 #TODO the animation to be faster or at least adjustable
 #TODO want a bar for the frame number
-#TODO plot lines
-#TODO cleaner data read for new format
 #TODO plot axis
-#TODO plot COM
-#TODO add color back
 
 def load_from_mat(filename=None, data={}, loaded=None):
     '''Turn .mat file to nested dict of all values
