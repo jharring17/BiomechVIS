@@ -69,10 +69,7 @@ def read_Mitchell_data():
         points = SegCOM[name]
         tag = np.full((points.shape[0], 1), 0) #0 tag for COMs
         points = np.append(points, tag, 1)
-        final_points[f'{name}_COM'] = points
-
-    for ax in AnatAx:
-        print(AnatAx[ax].shape)
+        final_points[f'{name}'] = points
 
     # add TBCM to points
     # df = pd.DataFrame(TBCM)
@@ -120,62 +117,90 @@ def filter_points_to_draw(points, p_filter=[]):
 
     return dfs, labels
 
-#Choices: working sample -> 'SampleData.mat' , one that is being worked on -> 'Mitchell_MocapData_Nairobi21.mat'
+def base_plot(dfs, labels):
+    '''Takes dfs and labels and returns the plot
+    Each index in dfs is a frame each point in dfs[x] is labeled in order by labels
+    returns the plot object'''
+    #info for the axis scaling
+    x_min = -5
+    x_max = 5
+    y_min = -5
+    y_max = 5
+    z_min = 0
+    z_max = 5
+    scene_scaling = dict(xaxis = dict(range=[x_min, x_max], autorange=False),
+                        yaxis = dict(range=[y_min, y_max], autorange=False),
+                        zaxis = dict(range=[z_min, z_max], autorange=False),
+                        aspectmode='cube')
+    #the figure (full library)
+    main_plot = go.Figure(
+        data=[go.Scatter3d( x=dfs[0]['X'],
+                            y=dfs[0]['Y'], 
+                            z=dfs[0]['Z'],
+                            mode='markers', #gets rid of line connecting all points
+                            marker={'color':dfs[0]['Segment_ID'], 'size': 5},
+                            hovertext= labels
+                            ) #just for frame 1
+        ],
+        layout=go.Layout(width=1600, height=800, #TODO dynamically set plot size
+                        scene = scene_scaling,
+                        title="Sample", #TODO change plot title
+                        #slider= #TODO implement the frame slider
+                        updatemenus=[dict(type="buttons",
+                                            buttons=[dict(label="Play",
+                                                        method="animate",
+                                                        args=[None, {"fromcurrent": True, "frame": {"duration": 100, 'redraw': True}, "transition": {"duration": 0}}]), #TODO verify this controls the speed https://plotly.com/javascript/animations/
+                                                    dict(label='Pause',
+                                                        method="animate",
+                                                        args=[[None], {"mode": "immediate"}]),
+                                                    dict(label="Restart",
+                                                        method="animate",
+                                                        args=[None, {"frame": {"duration": 100, 'redraw': True}, "mode": 'immediate',}]),
+                                                    ])]
+        ),
+        frames=[go.Frame(
+                data= [go.Scatter3d(
+                            x=df['X'],
+                            y=df['Y'], 
+                            z=df['Z'], 
+                            mode='markers', #gets rid of line connecting all points
+                            marker={'color':df['Segment_ID'],  'size': 5},
+                            connectgaps=False, #TODO ask what we should do in this case.  Currently this stops the filling in of blanks/NaNs
+                            hovertext = labels
+                            )])
+                for df in dfs] #https://plotly.com/python-api-reference/generated/plotly.graph_objects.Figure.html
+    )
+
+    return main_plot
+
+def draw_line(plot, p1, p2, c='red'):
+    '''Add a line in all frames of plot from p1 to p2'''
+    #convert point array to df for plotly
+    df = pd.DataFrame(p1)
+    df.columns = ['X', 'Y', 'Z', 'Segment_ID']
+    p1 = df
+    df = pd.DataFrame(p2)
+    df.columns = ['X', 'Y', 'Z', 'Segment_ID']
+    p2 = df
+
+    plot.add_trace(go.Scatter3d(
+        x=[p1['X'][0], p2['X'][0]],
+        y=[p1['Y'][0], p2['Y'][0]],
+        z=[p1['Z'][0], p2['Z'][0]],
+        mode='lines', line=dict(color=c)
+    ))
+
+    for i, frame in enumerate(plot.frames):
+        temp = list(frame.data)
+        temp.append(go.Scatter3d(x=[p1['X'][i], p2['X'][i]], y=[p1['Y'][i], p2['Y'][i]], z=[p1['Z'][i], p2['Z'][i]], mode='lines', line=dict(color='red')))
+        frame.data = temp
+
+    return plot
 
 points = read_Mitchell_data()
 dfs, labels = filter_points_to_draw(points)
-
-
-#info for the axis scaling
-x_min = -5
-x_max = 5
-y_min = -5
-y_max = 5
-z_min = 0
-z_max = 5
-scene_scaling = dict(xaxis = dict(range=[x_min, x_max], autorange=False),
-                    yaxis = dict(range=[y_min, y_max], autorange=False),
-                    zaxis = dict(range=[z_min, z_max], autorange=False),
-                    aspectmode='cube')
-#the figure (full library)
-main_plot = go.Figure(
-    data=[go.Scatter3d( x=dfs[0]['X'],
-                        y=dfs[0]['Y'], 
-                        z=dfs[0]['Z'],
-                        mode='markers', #gets rid of line connecting all points
-                        marker={'color':dfs[0]['Segment_ID'], 'size': 5},
-                        hovertext= labels
-                        ) #just for frame 1
-    ],
-    layout=go.Layout(width=1600, height=800, #TODO dynamically set plot size
-                     scene = scene_scaling,
-                     title="Sample", #TODO change plot title
-                     #slider= #TODO implement the frame slider
-                     updatemenus=[dict(type="buttons",
-                                        buttons=[dict(label="Play",
-                                                    method="animate",
-                                                    args=[None, {"fromcurrent": True, "frame": {"duration": 100, 'redraw': True}, "transition": {"duration": 0}}]), #TODO verify this controls the speed https://plotly.com/javascript/animations/
-                                                dict(label='Pause',
-                                                     method="animate",
-                                                     args=[[None], {"mode": "immediate"}]),
-                                                dict(label="Restart",
-                                                    method="animate",
-                                                    args=[None, {"frame": {"duration": 100, 'redraw': True}, "mode": 'immediate',}]),
-                                                ])]
-    ),
-    frames=[go.Frame(
-            data= [go.Scatter3d(
-                        x=df['X'],
-                        y=df['Y'], 
-                        z=df['Z'], 
-                        mode='markers', #gets rid of line connecting all points
-                        marker={'color':df['Segment_ID'],  'size': 5},
-                        connectgaps=False, #TODO ask what we should do in this case.  Currently this stops the filling in of blanks/NaNs
-                        hovertext = labels
-                        )])
-            for df in dfs] #https://plotly.com/python-api-reference/generated/plotly.graph_objects.Figure.html
-)
-
-
+main_plot = base_plot(dfs, labels)
+main_plot = draw_line(main_plot, points['PELVIS'], points['TORSO'])
+main_plot = draw_line(main_plot, points['LHM2'], points['RHM2'])
 
 main_plot.show()
