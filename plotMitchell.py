@@ -234,26 +234,42 @@ def base_plot(dfs, labels, invis_dfs):
 
     return main_plot
 
-def draw_line(plot, p1, p2, c='red'):
-    '''Add a line in all frames of plot from p1[x] to p2[x]'''
-    #convert point array to df for plotly
-    df = pd.DataFrame(p1[:,:3])
-    df.columns = ['X', 'Y', 'Z']
-    p1 = df
-    df = pd.DataFrame(p2[:,:3])
-    df.columns = ['X', 'Y', 'Z']
-    p2 = df
+def draw_line(plot, froms, tos, c='red'):
+    '''Add a line in all frames of plot from froms[x] to tos[x]'''
+
+    #point list is [from, to, None] in a loop
+    frames = []
+    for n in range(len(froms[0])): #for every frame
+        x = []
+        y = []
+        z = []
+        frame = []
+        for i in range(len(froms)): #for every set of points 
+            x.append(froms[i][n][0])
+            x.append(tos[i][n][0])
+            y.append(froms[i][n][1])
+            y.append(tos[i][n][1])
+            z.append(froms[i][n][2])
+            z.append(tos[i][n][2])
+            x.append(None)
+            y.append(None)
+            z.append(None)
+        frame.append(x)
+        frame.append(y)
+        frame.append(z)
+        frames.append(frame)
 
     plot.add_trace(go.Scatter3d(
-        x=[p1['X'][0], p2['X'][0]],
-        y=[p1['Y'][0], p2['Y'][0]],
-        z=[p1['Z'][0], p2['Z'][0]],
+        x=frames[0][0],
+        y=frames[0][1],
+        z=frames[0][2],
         mode='lines', line=dict(color=c)
     ))
 
+    #one pass per frame for all lines O(n) where n = #frames
     for i, frame in enumerate(plot.frames):
         temp = list(frame.data)
-        temp.append(go.Scatter3d(x=[p1['X'][i], p2['X'][i]], y=[p1['Y'][i], p2['Y'][i]], z=[p1['Z'][i], p2['Z'][i]], mode='lines', line=dict(color='red')))
+        temp.append(go.Scatter3d(x=frames[i][0], y=frames[i][1], z=frames[i][2], mode='lines', line=dict(color='red')))
         frame.data = temp
 
     return plot
@@ -286,8 +302,7 @@ draw_timeseries(points['LHM2'], 'LHM2')
 dfs, labels = filter_points_to_draw(points, COMs)
 invis_dfs = filter_axis_to_draw(axes)
 main_plot = base_plot(dfs, labels, invis_dfs)
-main_plot = draw_line(main_plot, COMs['PELVIS'], COMs['TORSO'])
-main_plot = draw_line(main_plot, points['LHM2'], points['RHM2'])
+main_plot = draw_line(main_plot, [COMs['PELVIS'], points['LHM2']], [COMs['TORSO'], points['RHM2']])
 #main_plot = draw_anat_ax(main_plot, axes, COMs)
 
 
