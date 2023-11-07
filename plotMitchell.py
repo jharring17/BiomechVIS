@@ -131,51 +131,35 @@ def filter_points_to_draw(points, COMs, p_filter=[]):
 
     return dfs, labels
 
-def filter_axis_to_draw(axis, a_filer=[]):
-    '''Puts the axis into the dfs setup so they can be plotted invisibily'''
-    frames = []
-    for com_name in axis:
-        if com_name not in a_filer:
-            for dir in axis[com_name]:
-                for i, point in enumerate(axis[com_name][dir]):
-                    if len(frames) <= i:
-                        frames.append([])
-                    frames[i].append(point)
-            
-    frames = np.array(frames)
-    dfs = []
-    for frame in frames:
-        df = pd.DataFrame(frame)
-        df.columns = ['X', 'Y', 'Z']
-        dfs.append(df)
 
-    return dfs
-
-def draw_anat_ax(plot, axes, COMs):
+def draw_anat_ax(plot, axes, COMs, a_filter=[]):
     '''Draws the lines for each anat ax starting from its corresponding COM'''
     #TODO see if this can be done in one draw_line call (not sure if an array of colors is possible)
     froms = []
     tos = []
     for name in COMs:
-        froms.append(COMs[name])
-        tos.append(axes[name]['X'])
+        if name not in a_filter:
+            froms.append(COMs[name])
+            tos.append(axes[name]['X'])
     draw_line(plot, froms, tos, 'red', name='AnatAx X')
 
     tos = []
-    for name in COMs:    
-        tos.append(axes[name]['Y'])
+    for name in COMs:   
+        if name not in a_filter:
+            tos.append(axes[name]['Y'])
     draw_line(plot, froms, tos, 'green', name='AnatAx Y')
 
     tos = []
     for name in COMs:
-        tos.append(axes[name]['Z'])
+        if name not in a_filter:
+            tos.append(axes[name]['Z'])
     draw_line(plot, froms, tos, 'blue', name='AnatAx Z')
 
 
     return plot
 
 
-def base_plot(dfs, labels, invis_dfs):
+def base_plot(dfs, labels):
     '''Takes dfs and labels and returns the plot
     invis_dfs is the points to plot but not show (used for axis and vectors)
     Each index in dfs is a frame each point in dfs[x] is labeled in order by labels
@@ -200,12 +184,6 @@ def base_plot(dfs, labels, invis_dfs):
                             marker={'color':dfs[0]['Segment_ID'], 'size': 5},
                             hovertext= labels
                             ),
-            go.Scatter3d(   x=invis_dfs[0]['X'],
-                            y=invis_dfs[0]['Y'], 
-                            z=invis_dfs[0]['Z'],
-                            marker=dict(size=0, opacity=0), #makes them invis
-                            mode='markers', #gets rid of line connecting all points
-                            ), #just for frame 1
         ],
         layout=go.Layout(width=1600, height=800, #TODO dynamically set plot size
                         scene = scene_scaling,
@@ -232,14 +210,6 @@ def base_plot(dfs, labels, invis_dfs):
                             marker={'color':dfs[i]['Segment_ID'],  'size': 5},
                             connectgaps=False, #TODO ask what we should do in this case.  Currently this stops the filling in of blanks/NaNs
                             hovertext = labels
-                            ),
-                        go.Scatter3d(
-                            x=invis_dfs[i]['X'],
-                            y=invis_dfs[i]['Y'], 
-                            z=invis_dfs[i]['Z'], 
-                            marker=dict(size=0, opacity=0), #makes them invis
-                            mode='markers', #gets rid of line connecting all points
-                            connectgaps=False, 
                             ),
                             ])
                 for i in range(len(dfs))] #https://plotly.com/python-api-reference/generated/plotly.graph_objects.Figure.html
@@ -311,10 +281,8 @@ points, COMs, axes = read_Mitchell_data()
 
 draw_timeseries(points['LHM2'], 'LHM2')
 
-
 dfs, labels = filter_points_to_draw(points, COMs)
-invis_dfs = filter_axis_to_draw(axes)
-main_plot = base_plot(dfs, labels, invis_dfs)
+main_plot = base_plot(dfs, labels)
 main_plot = draw_line(main_plot, [COMs['PELVIS'], points['LHM2']], [COMs['TORSO'], points['RHM2']])
 main_plot = draw_anat_ax(main_plot, axes, COMs)
 
