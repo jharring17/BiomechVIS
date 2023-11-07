@@ -85,18 +85,19 @@ def read_Mitchell_data():
 
     # add points for AnatAx to invis points 
     # structure is key is name points to x,y,z dicts 
-    invis_points = {}
+    axes = {}
     a = ['X', 'Y', 'Z']
     for ax in AnatAx:
+        com = COMs[ax]
         temp = {}
         for i, line in enumerate(AnatAx[ax]): #x line then y then z
-            x = np.atleast_2d(line[0]).T
-            y = np.atleast_2d(line[1]).T
-            z = np.atleast_2d(line[2]).T
+            x = np.atleast_2d(line[0]).T*.1 + np.atleast_2d(com[:, 0]).T 
+            y = np.atleast_2d(line[1]).T*.1 + np.atleast_2d(com[:, 1]).T 
+            z = np.atleast_2d(line[2]).T*.1 + np.atleast_2d(com[:, 2]).T 
             temp[a[i]] = np.append(np.append(x, y, 1), z, 1)
-        invis_points[ax] = temp
+        axes[ax] = temp
 
-    return final_points, COMs, invis_points
+    return final_points, COMs, axes
 
 def filter_points_to_draw(points, COMs, p_filter=[]):
     '''Takes in all points and filters out those in the filter
@@ -160,17 +161,13 @@ def draw_anat_ax(plot, axes, COMs):
         tos.append(axes[name]['X'])
     draw_line(plot, froms, tos, 'red', name='AnatAx X')
 
-    froms = []
     tos = []
     for name in COMs:    
-        froms.append(COMs[name])
         tos.append(axes[name]['Y'])
     draw_line(plot, froms, tos, 'green', name='AnatAx Y')
 
-    froms = []
     tos = []
     for name in COMs:
-        froms.append(COMs[name])
         tos.append(axes[name]['Z'])
     draw_line(plot, froms, tos, 'blue', name='AnatAx Z')
 
