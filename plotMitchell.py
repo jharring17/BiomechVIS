@@ -86,11 +86,14 @@ def read_Mitchell_data():
     # add points for AnatAx to invis points 
     # structure is key is name points to x,y,z dicts 
     invis_points = {}
+    a = ['X', 'Y', 'Z']
     for ax in AnatAx:
         temp = {}
-        temp['X'] = AnatAx[ax][0].T
-        temp['Y'] = AnatAx[ax][1].T
-        temp['Z'] = AnatAx[ax][2].T
+        for i, line in enumerate(AnatAx[ax]): #x line then y then z
+            x = np.atleast_2d(line[0]).T
+            y = np.atleast_2d(line[1]).T
+            z = np.atleast_2d(line[2]).T
+            temp[a[i]] = np.append(np.append(x, y, 1), z, 1)
         invis_points[ax] = temp
 
     return final_points, COMs, invis_points
@@ -149,15 +152,28 @@ def filter_axis_to_draw(axis, a_filer=[]):
 
 def draw_anat_ax(plot, axes, COMs):
     '''Draws the lines for each anat ax starting from its corresponding COM'''
-    #TODO not really sure this draws the right lines
-    #TODO this takes forever
-    i = 0
+    #TODO see if this can be done in one draw_line call (not sure if an array of colors is possible)
+    froms = []
+    tos = []
     for name in COMs:
-        plot = draw_line(plot, COMs[name], axes[name]['X'], 'black')
-        plot = draw_line(plot, COMs[name], axes[name]['Y'], 'red')
-        plot = draw_line(plot, COMs[name], axes[name]['X'], 'yellow')
-        print(i)
-        i += 1
+        froms.append(COMs[name])
+        tos.append(axes[name]['X'])
+    draw_line(plot, froms, tos, 'red', name='AnatAx X')
+
+    froms = []
+    tos = []
+    for name in COMs:    
+        froms.append(COMs[name])
+        tos.append(axes[name]['Y'])
+    draw_line(plot, froms, tos, 'green', name='AnatAx Y')
+
+    froms = []
+    tos = []
+    for name in COMs:
+        froms.append(COMs[name])
+        tos.append(axes[name]['Z'])
+    draw_line(plot, froms, tos, 'blue', name='AnatAx Z')
+
 
     return plot
 
@@ -234,7 +250,7 @@ def base_plot(dfs, labels, invis_dfs):
 
     return main_plot
 
-def draw_line(plot, froms, tos, c='red'):
+def draw_line(plot, froms, tos, cs='red', name='lines'):
     '''Add a line in all frames of plot from froms[x] to tos[x]'''
 
     #point list is [from, to, None] in a loop
@@ -263,13 +279,13 @@ def draw_line(plot, froms, tos, c='red'):
         x=frames[0][0],
         y=frames[0][1],
         z=frames[0][2],
-        mode='lines', line=dict(color=c)
+        mode='lines', line=dict(color=cs), name=name
     ))
 
     #one pass per frame for all lines O(n) where n = #frames
     for i, frame in enumerate(plot.frames):
         temp = list(frame.data)
-        temp.append(go.Scatter3d(x=frames[i][0], y=frames[i][1], z=frames[i][2], mode='lines', line=dict(color='red')))
+        temp.append(go.Scatter3d(x=frames[i][0], y=frames[i][1], z=frames[i][2], mode='lines', line=dict(color=cs)))
         frame.data = temp
 
     return plot
@@ -303,7 +319,7 @@ dfs, labels = filter_points_to_draw(points, COMs)
 invis_dfs = filter_axis_to_draw(axes)
 main_plot = base_plot(dfs, labels, invis_dfs)
 main_plot = draw_line(main_plot, [COMs['PELVIS'], points['LHM2']], [COMs['TORSO'], points['RHM2']])
-#main_plot = draw_anat_ax(main_plot, axes, COMs)
+main_plot = draw_anat_ax(main_plot, axes, COMs)
 
 
 main_plot.show()
