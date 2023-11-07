@@ -171,9 +171,9 @@ def base_plot(dfs, labels):
     y_max = 5
     z_min = 0
     z_max = 5
-    scene_scaling = dict(xaxis = dict(range=[x_min, x_max], autorange=False),
-                        yaxis = dict(range=[y_min, y_max], autorange=False),
-                        zaxis = dict(range=[z_min, z_max], autorange=False),
+    scene_scaling = dict(xaxis = dict(range=[x_min, x_max], autorange=False, nticks=5),
+                        yaxis = dict(range=[y_min, y_max], autorange=False, nticks=5),
+                        zaxis = dict(range=[z_min, z_max], autorange=False, nticks=5),
                         aspectmode='cube')
     #the figure (full library)
     main_plot = go.Figure(
@@ -181,7 +181,7 @@ def base_plot(dfs, labels):
                             y=dfs[0]['Y'], 
                             z=dfs[0]['Z'],
                             mode='markers', #gets rid of line connecting all points
-                            marker={'color':dfs[0]['Segment_ID'], 'size': 5},
+                            marker={'color':dfs[0]['Segment_ID'], 'size': 1},
                             hovertext= labels
                             ),
         ],
@@ -192,13 +192,13 @@ def base_plot(dfs, labels):
                         updatemenus=[dict(type="buttons",
                                             buttons=[dict(label="Play",
                                                         method="animate",
-                                                        args=[None, {"fromcurrent": True, "frame": {"duration": 100, 'redraw': True}, "transition": {"duration": 0}}]), #TODO verify this controls the speed https://plotly.com/javascript/animations/
+                                                        args=[None, {"fromcurrent": True, "frame": {"duration": 50, 'redraw': True}, "transition": {"duration": 0}}]), #TODO verify this controls the speed https://plotly.com/javascript/animations/
                                                     dict(label='Pause',
                                                         method="animate",
                                                         args=[[None], {"mode": "immediate"}]),
                                                     dict(label="Restart",
                                                         method="animate",
-                                                        args=[None, {"frame": {"duration": 100, 'redraw': True}, "mode": 'immediate',}]),
+                                                        args=[None, {"frame": {"duration": 50, 'redraw': True}, "mode": 'immediate',}]),
                                                     ])]
         ),
         frames=[go.Frame(
@@ -207,7 +207,7 @@ def base_plot(dfs, labels):
                             y=dfs[i]['Y'], 
                             z=dfs[i]['Z'], 
                             mode='markers', #gets rid of line connecting all points
-                            marker={'color':dfs[i]['Segment_ID'],  'size': 5},
+                            marker={'color':dfs[i]['Segment_ID'],  'size': 1},
                             connectgaps=False, #TODO ask what we should do in this case.  Currently this stops the filling in of blanks/NaNs
                             hovertext = labels
                             ),
@@ -273,10 +273,6 @@ def draw_timeseries(point, point_name=''):
     fig_z.show()
 
 
-
-
-
-
 points, COMs, axes = read_Mitchell_data()
 
 draw_timeseries(points['LHM2'], 'LHM2')
@@ -285,6 +281,5 @@ dfs, labels = filter_points_to_draw(points, COMs)
 main_plot = base_plot(dfs, labels)
 main_plot = draw_line(main_plot, [COMs['PELVIS'], points['LHM2']], [COMs['TORSO'], points['RHM2']])
 main_plot = draw_anat_ax(main_plot, axes, COMs)
-
 
 main_plot.show()
