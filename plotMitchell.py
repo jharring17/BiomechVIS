@@ -68,20 +68,12 @@ def read_Mitchell_data():
         points = np.append(points, tag, 1)
         COMs[name] = points
 
-    # add TBCM to points
-    # df = pd.DataFrame(TBCM)
-    # df.columns = ['X', 'Y', 'Z']
-    # points['TBCM'] = df
-    #final_points['TBCM'] = TBCM
-
-    # TODO update this once we have a set idea of how we will draw lines and vectors
-    # information for lines and vectors
-
-    # do same for TBCMVeloc to points
-    # df = pd.DataFrame(TBCMVeloc)
-    # df.columns = ['X', 'Y', 'Z']
-    # points['TBCMVeloc'] = df
-    #final_points['TBCMVeloc'] = TBCMVeloc
+    vectors = {}
+    #TODO change from hardcoded
+    vectors['TBCM'] = [[], []]
+    
+    vectors['TBCM'][0] = TBCM
+    vectors['TBCM'][1] = TBCM + TBCMVeloc
 
     # add points for AnatAx to invis points 
     # structure is key is name points to x,y,z dicts 
@@ -97,7 +89,7 @@ def read_Mitchell_data():
             temp[a[i]] = np.append(np.append(x, y, 1), z, 1)
         axes[ax] = temp
 
-    return final_points, COMs, axes
+    return final_points, COMs, axes, vectors
 
 def filter_points_to_draw(points, COMs, p_filter=[]):
     '''Takes in all points and filters out those in the filter
@@ -158,6 +150,17 @@ def draw_anat_ax(plot, axes, COMs, a_filter=[]):
 
     return plot
 
+def draw_vectors(plot, vectors, v_filter=[]):
+    '''Draw the vectors
+    Currently just a line from vector[key][0] to vector[key][1] at every frame'''
+    froms = []
+    tos = []
+    for vector in vectors:
+        if vector not in v_filter:
+            froms.append(vectors[vector][0])
+            tos.append(vectors[vector][1])
+    plot = draw_line(plot, froms, tos, 'purple', name='Vectors')
+    return plot
 
 def base_plot(dfs, labels):
     '''Takes dfs and labels and returns the plot
@@ -171,9 +174,10 @@ def base_plot(dfs, labels):
     y_max = 5
     z_min = 0
     z_max = 5
-    scene_scaling = dict(xaxis = dict(range=[x_min, x_max], autorange=False, nticks=5),
-                        yaxis = dict(range=[y_min, y_max], autorange=False, nticks=5),
-                        zaxis = dict(range=[z_min, z_max], autorange=False, nticks=5),
+    p_size = 1
+    scene_scaling = dict(xaxis = dict(range=[x_min, x_max], autorange=False),
+                        yaxis = dict(range=[y_min, y_max], autorange=False),
+                        zaxis = dict(range=[z_min, z_max], autorange=False),
                         aspectmode='cube')
     #the figure (full library)
     main_plot = go.Figure(
@@ -181,7 +185,7 @@ def base_plot(dfs, labels):
                             y=dfs[0]['Y'], 
                             z=dfs[0]['Z'],
                             mode='markers', #gets rid of line connecting all points
-                            marker={'color':dfs[0]['Segment_ID'], 'size': 1},
+                            marker={'color':dfs[0]['Segment_ID'], 'size': p_size},
                             hovertext= labels
                             ),
         ],
@@ -207,7 +211,7 @@ def base_plot(dfs, labels):
                             y=dfs[i]['Y'], 
                             z=dfs[i]['Z'], 
                             mode='markers', #gets rid of line connecting all points
-                            marker={'color':dfs[i]['Segment_ID'],  'size': 1},
+                            marker={'color':dfs[i]['Segment_ID'],  'size': p_size},
                             connectgaps=False, #TODO ask what we should do in this case.  Currently this stops the filling in of blanks/NaNs
                             hovertext = labels
                             ),
@@ -273,7 +277,7 @@ def draw_timeseries(point, point_name=''):
     fig_z.show()
 
 
-points, COMs, axes = read_Mitchell_data()
+points, COMs, axes, vectors = read_Mitchell_data()
 
 draw_timeseries(points['LHM2'], 'LHM2')
 
@@ -281,5 +285,7 @@ dfs, labels = filter_points_to_draw(points, COMs)
 main_plot = base_plot(dfs, labels)
 main_plot = draw_line(main_plot, [COMs['PELVIS'], points['LHM2']], [COMs['TORSO'], points['RHM2']])
 main_plot = draw_anat_ax(main_plot, axes, COMs)
+main_plot = draw_vectors(main_plot, vectors)
+
 
 main_plot.show()
