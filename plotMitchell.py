@@ -68,32 +68,28 @@ def read_Mitchell_data():
         points = np.append(points, tag, 1)
         COMs[name] = points
 
-    # add TBCM to points
-    # df = pd.DataFrame(TBCM)
-    # df.columns = ['X', 'Y', 'Z']
-    # points['TBCM'] = df
-    #final_points['TBCM'] = TBCM
-
-    # TODO update this once we have a set idea of how we will draw lines and vectors
-    # information for lines and vectors
-
-    # do same for TBCMVeloc to points
-    # df = pd.DataFrame(TBCMVeloc)
-    # df.columns = ['X', 'Y', 'Z']
-    # points['TBCMVeloc'] = df
-    #final_points['TBCMVeloc'] = TBCMVeloc
+    vectors = {}
+    #TODO change from hardcoded
+    vectors['TBCM'] = [[], []]
+    
+    vectors['TBCM'][0] = TBCM
+    vectors['TBCM'][1] = TBCM + TBCMVeloc
 
     # add points for AnatAx to invis points 
     # structure is key is name points to x,y,z dicts 
-    invis_points = {}
+    axes = {}
+    a = ['X', 'Y', 'Z']
     for ax in AnatAx:
+        com = COMs[ax]
         temp = {}
-        temp['X'] = AnatAx[ax][0].T
-        temp['Y'] = AnatAx[ax][1].T
-        temp['Z'] = AnatAx[ax][2].T
-        invis_points[ax] = temp
+        for i, line in enumerate(AnatAx[ax]): #x line then y then z
+            x = np.atleast_2d(line[0]).T*.1 + np.atleast_2d(com[:, 0]).T 
+            y = np.atleast_2d(line[1]).T*.1 + np.atleast_2d(com[:, 1]).T 
+            z = np.atleast_2d(line[2]).T*.1 + np.atleast_2d(com[:, 2]).T 
+            temp[a[i]] = np.append(np.append(x, y, 1), z, 1)
+        axes[ax] = temp
 
-    return final_points, COMs, invis_points
+    return final_points, COMs, axes, vectors
 
 def filter_points_to_draw(points, COMs, p_filter=[]):
     '''Takes in all points and filters out those in the filter
@@ -127,42 +123,46 @@ def filter_points_to_draw(points, COMs, p_filter=[]):
 
     return dfs, labels
 
-def filter_axis_to_draw(axis, a_filer=[]):
-    '''Puts the axis into the dfs setup so they can be plotted invisibily'''
-    frames = []
-    for com_name in axis:
-        if com_name not in a_filer:
-            for dir in axis[com_name]:
-                for i, point in enumerate(axis[com_name][dir]):
-                    if len(frames) <= i:
-                        frames.append([])
-                    frames[i].append(point)
-            
-    frames = np.array(frames)
-    dfs = []
-    for frame in frames:
-        df = pd.DataFrame(frame)
-        df.columns = ['X', 'Y', 'Z']
-        dfs.append(df)
 
-    return dfs
-
-def draw_anat_ax(plot, axes, COMs):
+def draw_anat_ax(plot, axes, COMs, a_filter=[]):
     '''Draws the lines for each anat ax starting from its corresponding COM'''
-    #TODO not really sure this draws the right lines
-    #TODO this takes forever
-    i = 0
+    #TODO see if this can be done in one draw_line call (not sure if an array of colors is possible)
+    froms = []
+    tos = []
     for name in COMs:
-        plot = draw_line(plot, COMs[name], axes[name]['X'], 'black')
-        plot = draw_line(plot, COMs[name], axes[name]['Y'], 'red')
-        plot = draw_line(plot, COMs[name], axes[name]['X'], 'yellow')
-        print(i)
-        i += 1
+        if name not in a_filter:
+            froms.append(COMs[name])
+            tos.append(axes[name]['X'])
+    draw_line(plot, froms, tos, 'red', name='AnatAx X')
+
+    tos = []
+    for name in COMs:   
+        if name not in a_filter:
+            tos.append(axes[name]['Y'])
+    draw_line(plot, froms, tos, 'green', name='AnatAx Y')
+
+    tos = []
+    for name in COMs:
+        if name not in a_filter:
+            tos.append(axes[name]['Z'])
+    draw_line(plot, froms, tos, 'blue', name='AnatAx Z')
+
 
     return plot
 
+def draw_vectors(plot, vectors, v_filter=[]):
+    '''Draw the vectors
+    Currently just a line from vector[key][0] to vector[key][1] at every frame'''
+    froms = []
+    tos = []
+    for vector in vectors:
+        if vector not in v_filter:
+            froms.append(vectors[vector][0])
+            tos.append(vectors[vector][1])
+    plot = draw_line(plot, froms, tos, 'purple', name='Vectors')
+    return plot
 
-def base_plot(dfs, labels, invis_dfs):
+def base_plot(dfs, labels):
     '''Takes dfs and labels and returns the plot
     invis_dfs is the points to plot but not show (used for axis and vectors)
     Each index in dfs is a frame each point in dfs[x] is labeled in order by labels
@@ -174,6 +174,7 @@ def base_plot(dfs, labels, invis_dfs):
     y_max = 5
     z_min = 0
     z_max = 5
+    p_size = 1
     scene_scaling = dict(xaxis = dict(range=[x_min, x_max], autorange=False),
                         yaxis = dict(range=[y_min, y_max], autorange=False),
                         zaxis = dict(range=[z_min, z_max], autorange=False),
@@ -184,15 +185,9 @@ def base_plot(dfs, labels, invis_dfs):
                             y=dfs[0]['Y'], 
                             z=dfs[0]['Z'],
                             mode='markers', #gets rid of line connecting all points
-                            marker={'color':dfs[0]['Segment_ID'], 'size': 5},
+                            marker={'color':dfs[0]['Segment_ID'], 'size': p_size},
                             hovertext= labels
                             ),
-            go.Scatter3d(   x=invis_dfs[0]['X'],
-                            y=invis_dfs[0]['Y'], 
-                            z=invis_dfs[0]['Z'],
-                            marker=dict(size=0, opacity=0), #makes them invis
-                            mode='markers', #gets rid of line connecting all points
-                            ), #just for frame 1
         ],
         layout=go.Layout(width=1600, height=800, #TODO dynamically set plot size
                         scene = scene_scaling,
@@ -201,13 +196,13 @@ def base_plot(dfs, labels, invis_dfs):
                         updatemenus=[dict(type="buttons",
                                             buttons=[dict(label="Play",
                                                         method="animate",
-                                                        args=[None, {"fromcurrent": True, "frame": {"duration": 100, 'redraw': True}, "transition": {"duration": 0}}]), #TODO verify this controls the speed https://plotly.com/javascript/animations/
+                                                        args=[None, {"fromcurrent": True, "frame": {"duration": 50, 'redraw': True}, "transition": {"duration": 0}}]), #TODO verify this controls the speed https://plotly.com/javascript/animations/
                                                     dict(label='Pause',
                                                         method="animate",
                                                         args=[[None], {"mode": "immediate"}]),
                                                     dict(label="Restart",
                                                         method="animate",
-                                                        args=[None, {"frame": {"duration": 100, 'redraw': True}, "mode": 'immediate',}]),
+                                                        args=[None, {"frame": {"duration": 50, 'redraw': True}, "mode": 'immediate',}]),
                                                     ])]
         ),
         frames=[go.Frame(
@@ -216,17 +211,9 @@ def base_plot(dfs, labels, invis_dfs):
                             y=dfs[i]['Y'], 
                             z=dfs[i]['Z'], 
                             mode='markers', #gets rid of line connecting all points
-                            marker={'color':dfs[i]['Segment_ID'],  'size': 5},
+                            marker={'color':dfs[i]['Segment_ID'],  'size': p_size},
                             connectgaps=False, #TODO ask what we should do in this case.  Currently this stops the filling in of blanks/NaNs
                             hovertext = labels
-                            ),
-                        go.Scatter3d(
-                            x=invis_dfs[i]['X'],
-                            y=invis_dfs[i]['Y'], 
-                            z=invis_dfs[i]['Z'], 
-                            marker=dict(size=0, opacity=0), #makes them invis
-                            mode='markers', #gets rid of line connecting all points
-                            connectgaps=False, 
                             ),
                             ])
                 for i in range(len(dfs))] #https://plotly.com/python-api-reference/generated/plotly.graph_objects.Figure.html
@@ -234,26 +221,42 @@ def base_plot(dfs, labels, invis_dfs):
 
     return main_plot
 
-def draw_line(plot, p1, p2, c='red'):
-    '''Add a line in all frames of plot from p1[x] to p2[x]'''
-    #convert point array to df for plotly
-    df = pd.DataFrame(p1[:,:3])
-    df.columns = ['X', 'Y', 'Z']
-    p1 = df
-    df = pd.DataFrame(p2[:,:3])
-    df.columns = ['X', 'Y', 'Z']
-    p2 = df
+def draw_line(plot, froms, tos, cs='red', name='lines'):
+    '''Add a line in all frames of plot from froms[x] to tos[x]'''
+
+    #point list is [from, to, None] in a loop
+    frames = []
+    for n in range(len(froms[0])): #for every frame
+        x = []
+        y = []
+        z = []
+        frame = []
+        for i in range(len(froms)): #for every set of points 
+            x.append(froms[i][n][0])
+            x.append(tos[i][n][0])
+            y.append(froms[i][n][1])
+            y.append(tos[i][n][1])
+            z.append(froms[i][n][2])
+            z.append(tos[i][n][2])
+            x.append(None)
+            y.append(None)
+            z.append(None)
+        frame.append(x)
+        frame.append(y)
+        frame.append(z)
+        frames.append(frame)
 
     plot.add_trace(go.Scatter3d(
-        x=[p1['X'][0], p2['X'][0]],
-        y=[p1['Y'][0], p2['Y'][0]],
-        z=[p1['Z'][0], p2['Z'][0]],
-        mode='lines', line=dict(color=c)
+        x=frames[0][0],
+        y=frames[0][1],
+        z=frames[0][2],
+        mode='lines', line=dict(color=cs), name=name
     ))
 
+    #one pass per frame for all lines O(n) where n = #frames
     for i, frame in enumerate(plot.frames):
         temp = list(frame.data)
-        temp.append(go.Scatter3d(x=[p1['X'][i], p2['X'][i]], y=[p1['Y'][i], p2['Y'][i]], z=[p1['Z'][i], p2['Z'][i]], mode='lines', line=dict(color='red')))
+        temp.append(go.Scatter3d(x=frames[i][0], y=frames[i][1], z=frames[i][2], mode='lines', line=dict(color=cs)))
         frame.data = temp
 
     return plot
@@ -274,21 +277,15 @@ def draw_timeseries(point, point_name=''):
     fig_z.show()
 
 
-
-
-
-
-points, COMs, axes = read_Mitchell_data()
+points, COMs, axes, vectors = read_Mitchell_data()
 
 draw_timeseries(points['LHM2'], 'LHM2')
 
-
 dfs, labels = filter_points_to_draw(points, COMs)
-invis_dfs = filter_axis_to_draw(axes)
-main_plot = base_plot(dfs, labels, invis_dfs)
-main_plot = draw_line(main_plot, COMs['PELVIS'], COMs['TORSO'])
-main_plot = draw_line(main_plot, points['LHM2'], points['RHM2'])
-#main_plot = draw_anat_ax(main_plot, axes, COMs)
+main_plot = base_plot(dfs, labels)
+main_plot = draw_line(main_plot, [COMs['PELVIS'], points['LHM2']], [COMs['TORSO'], points['RHM2']])
+main_plot = draw_anat_ax(main_plot, axes, COMs)
+main_plot = draw_vectors(main_plot, vectors)
 
 
 main_plot.show()
