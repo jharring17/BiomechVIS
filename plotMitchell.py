@@ -285,6 +285,27 @@ def draw_timeseries(point, point_name=''):
     figureY = fig_y
     figureZ = fig_z
 
+def detect_filetype(filename):
+    loaded = sio.loadmat(filename)
+    if (loaded):
+        loaded = loaded["Data"]
+        if (np.shape(loaded) == (1,1)):
+            loaded = load_from_mat(filename, {})
+            key = list(loaded.keys())[0]
+            loaded = loaded[key]
+    shape = np.shape(loaded)
+    filetype = ""
+    if (len(shape) == 3 and shape[0] == 3 and shape[1] == 3):
+        filetype = "axes"
+    elif (len(shape) == 2 and shape[1] == 2):
+        filetype = "linesegment"
+    elif (len(shape) == 2 and shape[1] == 3):
+        filetype = "point"
+    else: #Need clarification on vector type to create accurate conditions
+        filetype = "vector"
+
+    return filetype
+
 def dash():
     app = Dash("plots")
 
@@ -346,6 +367,13 @@ def dash():
 
 
     app.run_server(debug=True)
+
+# folder_path = sys.argv[1]
+# print(detect_filetype(f'{folder_path}/Mitchell_AnatAx_Nairobi21.mat')) 
+# print(detect_filetype(f'{folder_path}/Mitchell_TBCMVeloc_Nairobi21.mat')) 
+# print(detect_filetype(f'{folder_path}/Mitchell_TBCM_Nairobi21.mat'))
+# print(detect_filetype(f'{folder_path}/Mitchell_SegCOM_Nairobi21.mat'))
+# print(detect_filetype(f'{folder_path}/Mitchell_MocapData_Nairobi21.mat')) 
 
 #Global Variables, can be changed when draw time series is deconstructed for individual parts
 figureX = ""
