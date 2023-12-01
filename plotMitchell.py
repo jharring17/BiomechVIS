@@ -4,7 +4,8 @@ import scipy.io as sio
 import numpy as np
 import pandas as pd
 import sys
-
+from dash import Dash, dcc, html, Input, Output
+import plotly.express as px
 
 #TODO color groups more distinctly 
 #want the df to hold group names instead of a numerical id for the group names
@@ -272,20 +273,96 @@ def draw_timeseries(point, point_name=''):
     fig_y = go.Figure(data=go.Scatter(x=time, y=y, mode='markers+lines'), layout=go.Layout(title=f'Point {point_name} Y over time', xaxis_title='Frame', yaxis_title='Y'))
     fig_z = go.Figure(data=go.Scatter(x=time, y=z, mode='markers+lines'), layout=go.Layout(title=f'Point {point_name} Z over time', xaxis_title='Frame', yaxis_title='Z'))
 
-    fig_x.show()
-    fig_y.show()
-    fig_z.show()
+    # fig_x.show()
+    # fig_y.show()
+    # fig_z.show()
 
+    global figureX
+    global figureY
+    global figureZ
+
+    figureX = fig_x
+    figureY = fig_y
+    figureZ = fig_z
+
+def dash():
+    app = Dash("plots")
+
+    app.layout = html.Div([
+        html.H4('Interactive Graph Selection for Time Series'),
+        html.P("Select point:"),
+        dcc.Dropdown(
+            id="dropdown",
+            options=list(points.keys()),
+            value='LHM2',
+            clearable=False,
+        ),
+        dcc.Graph(id="graph1"),
+        dcc.Graph(id="graph2"),
+        dcc.Graph(id="graph3"),
+        dcc.Graph(id="graph4"),
+    ])
+
+
+    @app.callback(
+        Output("graph1", "figure"), 
+        Input("dropdown", "value"))
+    def display_timeseries(pointname):
+        draw_timeseries(points[pointname], pointname)
+        global figureX
+        fig = figureX
+        return fig
+
+    @app.callback(
+        Output("graph2", "figure"), 
+        Input("dropdown", "value"))
+    def display_timeseries(pointname):
+        draw_timeseries(points[pointname], pointname)
+        global figureY
+        fig = figureY
+        return fig
+
+    @app.callback(
+        Output("graph3", "figure"), 
+        Input("dropdown", "value"))
+    def display_timeseries(pointname):
+        draw_timeseries(points[pointname], pointname)
+        global figureZ
+        fig = figureZ
+        return fig
+    
+    @app.callback(
+        Output("graph4", "figure"), 
+        Input("dropdown", "value"))
+    def display_timeseries(pointname):
+        points, COMs, axes, vectors = read_Mitchell_data()
+        dfs, labels = filter_points_to_draw(points, COMs)
+        main_plot = base_plot(dfs, labels)
+        main_plot = draw_line(main_plot, [COMs['PELVIS'], points['LHM2']], [COMs['TORSO'], points['RHM2']])
+        main_plot = draw_anat_ax(main_plot, axes, COMs)
+        main_plot = draw_vectors(main_plot, vectors)
+        return main_plot
+
+
+
+    app.run_server(debug=True)
+
+#Global Variables, can be changed when draw time series is deconstructed for individual parts
+figureX = ""
+figureY = ""
+figureZ = ""
 
 points, COMs, axes, vectors = read_Mitchell_data()
 
-draw_timeseries(points['LHM2'], 'LHM2')
+# draw_timeseries(points['LHM2'], 'LHM2')
 
-dfs, labels = filter_points_to_draw(points, COMs)
-main_plot = base_plot(dfs, labels)
-main_plot = draw_line(main_plot, [COMs['PELVIS'], points['LHM2']], [COMs['TORSO'], points['RHM2']])
-main_plot = draw_anat_ax(main_plot, axes, COMs)
-main_plot = draw_vectors(main_plot, vectors)
+dash()
+
+# dfs, labels = filter_points_to_draw(points, COMs)
+# main_plot = base_plot(dfs, labels)
+# main_plot = draw_line(main_plot, [COMs['PELVIS'], points['LHM2']], [COMs['TORSO'], points['RHM2']])
+# main_plot = draw_anat_ax(main_plot, axes, COMs)
+# main_plot = draw_vectors(main_plot, vectors)
 
 
-main_plot.show()
+# main_plot.show()
