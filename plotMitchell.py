@@ -4,7 +4,7 @@ import scipy.io as sio
 import numpy as np
 import pandas as pd
 import sys
-from dash import Dash, dcc, html, Input, Output
+from dash import Dash, dcc, html, Input, Output, callback_context
 import plotly.express as px
 
 #TODO color groups more distinctly 
@@ -33,7 +33,7 @@ def load_from_mat(filename=None, data={}, loaded=None):
             data[field] = loaded[0,0][field]
     return data
 
-def read_Mitchell_data():
+def read_Mitchell_data(framerate):
     '''Read Mitchell data 
     Specified as a folder with hardcoded to contain exactly the five sample folders for now
     Folder path is sys.argv[1]
@@ -90,7 +90,18 @@ def read_Mitchell_data():
             temp[a[i]] = np.append(np.append(x, y, 1), z, 1)
         axes[ax] = temp
 
-    return final_points, COMs, axes, vectors
+    
+    undersampled_final_points = {key: value[::framerate] for key, value in final_points.items()}
+    # Undersample COMs
+    undersampled_COMs = {key: value[::framerate] for key, value in COMs.items()}
+    # Undersample vectors
+    undersampled_vectors = {key: [value[0][::framerate], value[1][::framerate]] for key, value in vectors.items()}
+    # Undersample axes
+    undersampled_axes = {}
+    for ax, temp in axes.items():
+        undersampled_axes[ax] = {coord: data[::framerate] for coord, data in temp.items()}
+
+    return undersampled_final_points, undersampled_COMs, undersampled_axes, undersampled_vectors
 
 def filter_points_to_draw(points, COMs, p_filter=[]):
     '''Takes in all points and filters out those in the filter
@@ -125,7 +136,7 @@ def filter_points_to_draw(points, COMs, p_filter=[]):
     return dfs, labels
 
 
-def draw_anat_ax(plot, axes, COMs, a_filter=[]):
+def draw_anat_ax(plot, axes, COMs, frame, a_filter=[]):
     '''Draws the lines for each anat ax starting from its corresponding COM'''
     #TODO see if this can be done in one draw_line call (not sure if an array of colors is possible)
     froms = []
@@ -134,24 +145,24 @@ def draw_anat_ax(plot, axes, COMs, a_filter=[]):
         if name not in a_filter:
             froms.append(COMs[name])
             tos.append(axes[name]['X'])
-    draw_line(plot, froms, tos, 'red', name='AnatAx X')
+    draw_line(plot, froms, tos, frame, 'red', name='AnatAx X')
 
     tos = []
     for name in COMs:   
         if name not in a_filter:
             tos.append(axes[name]['Y'])
-    draw_line(plot, froms, tos, 'green', name='AnatAx Y')
+    draw_line(plot, froms, tos, frame, 'green', name='AnatAx Y')
 
     tos = []
     for name in COMs:
         if name not in a_filter:
             tos.append(axes[name]['Z'])
-    draw_line(plot, froms, tos, 'blue', name='AnatAx Z')
+    draw_line(plot, froms, tos, frame, 'blue', name='AnatAx Z')
 
 
     return plot
 
-def draw_vectors(plot, vectors, v_filter=[]):
+def draw_vectors(plot, vectors,  startingFrame, v_filter=[]):
     '''Draw the vectors
     Currently just a line from vector[key][0] to vector[key][1] at every frame'''
     froms = []
@@ -160,10 +171,10 @@ def draw_vectors(plot, vectors, v_filter=[]):
         if vector not in v_filter:
             froms.append(vectors[vector][0])
             tos.append(vectors[vector][1])
-    plot = draw_line(plot, froms, tos, 'purple', name='Vectors')
+    plot = draw_line(plot, froms, tos, startingFrame, 'purple', name='Vectors')
     return plot
 
-def base_plot(dfs, labels):
+def base_plot(dfs, labels, frame):
     '''Takes dfs and labels and returns the plot
     invis_dfs is the points to plot but not show (used for axis and vectors)
     Each index in dfs is a frame each point in dfs[x] is labeled in order by labels
@@ -182,11 +193,11 @@ def base_plot(dfs, labels):
                         aspectmode='cube')
     #the figure (full library)
     main_plot = go.Figure(
-        data=[go.Scatter3d( x=dfs[0]['X'],
-                            y=dfs[0]['Y'], 
-                            z=dfs[0]['Z'],
+        data=[go.Scatter3d( x=dfs[frame]['X'],
+                            y=dfs[frame]['Y'], 
+                            z=dfs[frame]['Z'],
                             mode='markers', #gets rid of line connecting all points
-                            marker={'color':dfs[0]['Segment_ID'], 'size': p_size},
+                            marker={'color':dfs[frame]['Segment_ID'], 'size': p_size},
                             hovertext= labels
                             ),
         ],
@@ -227,17 +238,17 @@ def base_plot(dfs, labels):
                             hovertext = labels
                             ),
                             ])
-                for i in range(len(dfs))] #https://plotly.com/python-api-reference/generated/plotly.graph_objects.Figure.html
+                for i in range(frame, len(dfs))] #https://plotly.com/python-api-reference/generated/plotly.graph_objects.Figure.html
     )
 
     return main_plot
 
-def draw_line(plot, froms, tos, cs='red', name='lines'):
+def draw_line(plot, froms, tos, startingFrame, cs='red', name='lines'):
     '''Add a line in all frames of plot from froms[x] to tos[x]'''
 
     #point list is [from, to, None] in a loop
     frames = []
-    for n in range(len(froms[0])): #for every frame
+    for n in range(startingFrame, len(froms[0])): #for every frame
         x = []
         y = []
         z = []
@@ -330,6 +341,7 @@ def detect_filetype(filename):
 
 def dash():
     app = Dash("plots")
+    global frameLength
 
     app.layout = html.Div([
         html.Div([ # Div to hold the dropdown stuff and the time series graphs
@@ -365,6 +377,22 @@ def dash():
                 children=[
                     dcc.Input(id='dummy-input', value='dummy-value', style={'display': 'none'}),
                     dcc.Graph(id="graph4", config={'responsive': True}),
+                    html.H4('Input for 3d Graph:'),
+                    html.P("Framerate Input:"),
+                    dcc.Input(
+                        id="3dFramerateInput", type="number", placeholder="", value=8, debounce=True
+                    ),
+                    html.P('Current Frame:'),
+                    dcc.Input(
+                        id="3dInput", type="number", placeholder="", value=1000, debounce=True
+                    ),
+                    html.P('Frame Slider'),
+                    html.Div([
+                        dcc.Slider(
+                            0, frameLength, 1,
+                            value=0,
+                            id='3dInputSlider'
+                        )], id="sliderDiv")
                 ]
             )
         ],
@@ -397,15 +425,48 @@ def dash():
     # Callback for drawing the 3D Plot
     @app.callback(
         Output("graph4", "figure"), 
-        Input("dummy-input", "value"))
-    def display_plot(pointname):
-        points, COMs, axes, vectors = read_Mitchell_data()
+        Input("3dInputSlider", "value"),
+        Input("3dFramerateInput", "value"))
+    def draw_3d_graph(startingFrame, framerate):
+        points, COMs, axes, vectors = read_Mitchell_data(framerate)
         dfs, labels = filter_points_to_draw(points, COMs)
-        main_plot = base_plot(dfs, labels)
-        main_plot = draw_line(main_plot, [COMs['PELVIS'], points['LHM2']], [COMs['TORSO'], points['RHM2']])
-        main_plot = draw_anat_ax(main_plot, axes, COMs)
-        main_plot = draw_vectors(main_plot, vectors)
+        main_plot = base_plot(dfs, labels, startingFrame)
+        main_plot = draw_line(main_plot, [COMs['PELVIS'], points['LHM2']], [COMs['TORSO'], points['RHM2']], startingFrame)
+        main_plot = draw_anat_ax(main_plot, axes, COMs, startingFrame)
+        main_plot = draw_vectors(main_plot, vectors, startingFrame)
         return main_plot
+    
+    @app.callback(
+        Output("3dInput", "value"),
+        Output("3dInputSlider", "value"),
+        Input("3dInput", "value"),
+        Input("3dInputSlider", "value"),)
+    def callback(start, slider):
+        ctx = callback_context
+        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+        start_value = start if trigger_id == "3dInput" else slider
+        slider_value = slider if trigger_id == "3dInputSlider" else start_value
+
+        return start_value, slider_value
+    
+    @app.callback(
+        Output("sliderDiv", "children"),
+        Input("3dFramerateInput", "value"))
+    def callback(framerate):
+        points, COMs, axes, vectors = read_Mitchell_data(framerate)
+        dfs, labels = filter_points_to_draw(points, COMs)
+        frameLength = len(dfs)
+
+        div = html.Div([
+            dcc.Slider(
+                0, frameLength, 1,
+                value=0,
+                id='3dInputSlider'
+            )
+        ], id="sliderDiv")
+
+        return div
 
 
 
@@ -423,10 +484,12 @@ figureX = ""
 figureY = ""
 figureZ = ""
 
-points, COMs, axes, vectors = read_Mitchell_data()
+points, COMs, axes, vectors = read_Mitchell_data(8)
 
 # draw_timeseries(points['LHM2'], 'LHM2')
 
+dfs, labels = filter_points_to_draw(points, COMs)
+frameLength = len(dfs)
 dash()
 
 # dfs, labels = filter_points_to_draw(points, COMs)
