@@ -377,6 +377,22 @@ def dash():
                 children=[
                     dcc.Input(id='dummy-input', value='dummy-value', style={'display': 'none'}),
                     dcc.Graph(id="graph4", config={'responsive': True}),
+                    html.H4('Input for 3d Graph:'),
+                    html.P("Framerate Input:"),
+                    dcc.Input(
+                        id="3dFramerateInput", type="number", placeholder="", value=8, debounce=True
+                    ),
+                    html.P('Current Frame:'),
+                    dcc.Input(
+                        id="3dInput", type="number", placeholder="", value=1000, debounce=True
+                    ),
+                    html.P('Frame Slider'),
+                    html.Div([
+                        dcc.Slider(
+                            0, frameLength, 1,
+                            value=0,
+                            id='3dInputSlider'
+                        )], id="sliderDiv")
                 ]
             ),
             # html.H4('Input for 3d Graph:', style={"margin": "0px"}),
