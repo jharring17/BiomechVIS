@@ -290,9 +290,9 @@ def draw_timeseries(point, point_name=''):
     z = point[:,2].T
     time = list(range(len(z)))
 
-    fig_x = go.Figure(data=go.Scatter(x=time, y=x, mode='markers+lines'), layout=go.Layout(title=f'Point {point_name} X over time', xaxis_title='Frame', yaxis_title='X'))
-    fig_y = go.Figure(data=go.Scatter(x=time, y=y, mode='markers+lines'), layout=go.Layout(title=f'Point {point_name} Y over time', xaxis_title='Frame', yaxis_title='Y'))
-    fig_z = go.Figure(data=go.Scatter(x=time, y=z, mode='markers+lines'), layout=go.Layout(title=f'Point {point_name} Z over time', xaxis_title='Frame', yaxis_title='Z'))
+    fig_x = go.Figure(data=go.Scatter(x=time, y=x, mode='markers+lines', line=dict(color='red')), layout=go.Layout(title=f'Point {point_name} X over time', xaxis_title='Frame', yaxis_title='X'))
+    fig_y = go.Figure(data=go.Scatter(x=time, y=y, mode='markers+lines', line=dict(color='green')), layout=go.Layout(title=f'Point {point_name} Y over time', xaxis_title='Frame', yaxis_title='Y'))
+    fig_z = go.Figure(data=go.Scatter(x=time, y=z, mode='markers+lines', line=dict(color='blue')), layout=go.Layout(title=f'Point {point_name} Z over time', xaxis_title='Frame', yaxis_title='Z'))
 
     fig_x.update_layout(
         width=825,  
@@ -416,7 +416,7 @@ def dash():
                 dcc.Slider(
                     0, frameLength, 1,
                     value=0,
-                    id='3dInputSlider'
+                    id='3dInputSlider',
                 )], id="sliderDiv")
             ], 
             style={
