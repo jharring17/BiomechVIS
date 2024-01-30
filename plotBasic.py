@@ -201,7 +201,7 @@ def base_plot(dfs, labels, frame):
                             hovertext= labels
                             ),
         ],
-        layout=go.Layout(width=800, height=875, #TODO dynamically set plot size (800 and 900)
+        layout=go.Layout(#width=800, height=875, #TODO dynamically set plot size (800 and 900)
                         scene = scene_scaling,
                         title="Sample", #TODO change plot title
                         #slider= #TODO implement the frame slider
@@ -225,7 +225,7 @@ def base_plot(dfs, labels, frame):
                             orientation='h',
                             xanchor='center',  # Center the legend horizontally
                             yanchor='bottom',
-                        )
+                        ),
         ),
         frames=[go.Frame(
                 data= [go.Scatter3d(
@@ -295,15 +295,15 @@ def draw_timeseries(point, point_name=''):
     fig_z = go.Figure(data=go.Scatter(x=time, y=z, mode='markers+lines', line=dict(color='blue')), layout=go.Layout(title=f'Point {point_name} Z over time', xaxis_title='Frame', yaxis_title='Z'))
 
     fig_x.update_layout(
-        width=825,  
+        # width=825,  
         height=300,
     )
     fig_y.update_layout(
-        width=825,  
+        # width=825,  
         height=300,  
     )
     fig_z.update_layout(
-        width=825,  
+        # width=825,  
         height=300,
     )
     # fig_x.show()
@@ -368,7 +368,7 @@ def dash():
         style={ # Styling for the Div that holds the Dropdown menu and the Times Series Graph
             'display': 'flex',
             'flex-direction': 'column',
-            'width': '50%',
+            'width': '50vw',
         }),
         html.Div([  # Div for the Actual 3D Visualization
             dcc.Loading(
@@ -376,62 +376,66 @@ def dash():
                 type="default",
                 children=[
                     dcc.Input(id='dummy-input', value='dummy-value', style={'display': 'none'}),
-                    dcc.Graph(id="graph4", config={'responsive': True}),
-                ]
-            ),
-            # html.H4('Input for 3d Graph:', style={"margin": "0px"}),
-            html.Div([
-                html.Div([
-                    html.Div([
-                        html.P("Framerate Input:", style={ "font-weight": "bold"}),
-                        dcc.Input(
-                            id="3dFramerateInput", type="number", placeholder="", value=8, debounce=True, style={"height": "10px", "margin-left": "5px"},
-                        ),
-                    ],
-                    style={
-                        "display": "flex",
-                        "flex-direction": "row",
-                        "align-items": "center",
-                    }),
-                    html.Div([
-                        html.P('Current Frame:', style={ "font-weight": "bold"}),
-                        dcc.Input(
-                            id="3dInput", type="number", placeholder="", value=1000, debounce=True, style={"height": "10px", "margin-left": "5px"},
-                        ),
-                    ],
-                    style={
-                        "display": "flex",
-                        "flex-direction": "row",
-                        "align-items": "center",
-                    }),
+                    dcc.Graph(id="graph4"),
                 ],
-                style={
-                    "display": "flex",
-                    "flex-direction": "row",
-                    "align-items": "center",
-                    "justify-content": "space-around",
-                }),
-            html.P('Frame Slider', style={"margin": "0px", "font-weight": "bold"}),
-            html.Div([
-                dcc.Slider(
-                    0, frameLength, 1,
-                    value=0,
-                    id='3dInputSlider',
-                )], id="sliderDiv")
-            ], 
+            ),
+            html.Div([ # Div of the two inputs and the slider
+                    html.Div([ # Div of the two Inputs
+                        html.Div([ #Div of Framerate input
+                            html.P("Framerate Input:", style={"font-weight": "bold"}),
+                            dcc.Input(
+                                id="3dFramerateInput", type="number", placeholder="", value=8, debounce=True, style={"height": "10px", "margin-left": "5px"},
+                            ),
+                        ],
+                        style={
+                            "display": "flex",
+                            "flex-direction": "row",
+                            "align-items": "center",
+                        }), #End of framerate input div
+                        html.Div([ # Current Frame div
+                                html.P('Current Frame:', style={ "font-weight": "bold"}),
+                                dcc.Input(
+                                    id="3dInput", type="number", placeholder="", value=1000, debounce=True, style={"height": "10px", "margin-left": "5px"},
+                                ),
+                        ],
+                        style={
+                            "display": "flex",
+                            "flex-direction": "row",
+                            "align-items": "center",
+                        }), # End of div for current frame
+                    ],
+                    style={
+                        "display": "flex",
+                        "flex-direction": "row",
+                        "align-items": "center",
+                        'justify-content': 'space-around'
+                    }), # End of div for the two inputs
+                html.P('Frame Slider', style={"margin": "0px", "font-weight": "bold"}),
+                html.Div([
+                    dcc.Slider(
+                        0, frameLength, 1,
+                        value=0,
+                        id='3dInputSlider',
+                    )], id="sliderDiv") 
+            ],
             style={
-                "margin-top": "auto",
-            }),
+                'width': '100%'
+            }), # End of the Div with the two inputs and the Slider
         ],
         style={ # Styling for the 3D Visiaulization Div
-            'width': '50%',
+            'display': 'flex',
+            'width': '50vw',
             "height": "100vh",
+            'align-items': 'center',
+            'justify-content': 'center',
+            'flex-direction': 'column'
         }),        
     ],
     style={ #Styling for the Div that hold the two main divs (Dropdown and Times Series Divs, and the 3D Visualization Div)
         'display': 'flex',
         'width' : '100%',
         'flex-direction': 'row-reverse',
+        "align-items": "center",
     })
 
     # Call back for drawing the timeseries graphs
