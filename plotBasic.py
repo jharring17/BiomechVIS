@@ -6,6 +6,7 @@ import pandas as pd
 import sys
 from dash import Dash, dcc, html, Input, Output, callback_context
 import plotly.express as px
+import dash_mantine_components as dmc
 
 #TODO color groups more distinctly 
 #want the df to hold group names instead of a numerical id for the group names
@@ -201,7 +202,7 @@ def base_plot(dfs, labels, frame):
                             hovertext= labels
                             ),
         ],
-        layout=go.Layout(#width=800, height=875, #TODO dynamically set plot size (800 and 900)
+        layout=go.Layout(#width=800, height=875, #TODO Setting that size of the plot seems to make it not responsive to a change in window size.
                         scene = scene_scaling,
                         title="Sample", #TODO change plot title
                         #slider= #TODO implement the frame slider
@@ -225,7 +226,7 @@ def base_plot(dfs, labels, frame):
                             orientation='h',
                             xanchor='center',  # Center the legend horizontally
                             yanchor='bottom',
-                        ),
+                        )
         ),
         frames=[go.Frame(
                 data= [go.Scatter3d(
@@ -343,7 +344,9 @@ def dash():
     app = Dash("plots")
     global frameLength
 
-    app.layout = html.Div([
+    app.layout = html.Div([ # Start of Dash App
+    
+    html.Div([ # Start of the Div that holds EVERYTHING
         html.Div([ # Div to hold the dropdown stuff and the time series graphs
             html.Div([ #Div for the drop Down stuff
                 html.H4('Interactive Graph Selection for Time Series', style={"margin": '0px', 'margin-top': '5px'}),
@@ -368,7 +371,7 @@ def dash():
         style={ # Styling for the Div that holds the Dropdown menu and the Times Series Graph
             'display': 'flex',
             'flex-direction': 'column',
-            'width': '50vw',
+            'width': '50%',
         }),
         html.Div([  # Div for the Actual 3D Visualization
             dcc.Loading(
@@ -376,67 +379,67 @@ def dash():
                 type="default",
                 children=[
                     dcc.Input(id='dummy-input', value='dummy-value', style={'display': 'none'}),
-                    dcc.Graph(id="graph4"),
-                ],
+                    dcc.Graph(id="graph4", config={'responsive': True}),
+                ]
             ),
-            html.Div([ # Div of the two inputs and the slider
-                    html.Div([ # Div of the two Inputs
-                        html.Div([ #Div of Framerate input
-                            html.P("Framerate Input:", style={"font-weight": "bold"}),
-                            dcc.Input(
-                                id="3dFramerateInput", type="number", placeholder="", value=8, debounce=True, style={"height": "10px", "margin-left": "5px"},
-                            ),
-                        ],
-                        style={
-                            "display": "flex",
-                            "flex-direction": "row",
-                            "align-items": "center",
-                        }), #End of framerate input div
-                        html.Div([ # Current Frame div
-                                html.P('Current Frame:', style={ "font-weight": "bold"}),
-                                dcc.Input(
-                                    id="3dInput", type="number", placeholder="", value=1000, debounce=True, style={"height": "10px", "margin-left": "5px"},
-                                ),
-                        ],
-                        style={
-                            "display": "flex",
-                            "flex-direction": "row",
-                            "align-items": "center",
-                        }), # End of div for current frame
+            html.Div([ # Start of div that holds all framrate, current frame inputs and the sliders
+                html.Div([ # Start of div that holds both the framerate and current frame inputs
+                    html.Div([ # Start of div that holds the framerate input
+                        html.P("Framerate Input:", style={ "font-weight": "bold"}),
+                        dcc.Input(
+                            id="3dFramerateInput", type="number", placeholder="", value=8, debounce=True, style={"height": "10px", "margin-left": "5px"},
+                        ),
                     ],
                     style={
                         "display": "flex",
                         "flex-direction": "row",
                         "align-items": "center",
-                        'justify-content': 'space-around'
-                    }), # End of div for the two inputs
-                html.P('Frame Slider', style={"margin": "0px", "font-weight": "bold"}),
-                html.Div([
-                    dcc.Slider(
-                        0, frameLength, 1,
-                        value=0,
-                        id='3dInputSlider',
-                    )], id="sliderDiv") 
-            ],
-            style={
-                'width': '100%'
-            }), # End of the Div with the two inputs and the Slider
+                    }), # End of div that holds the framerate input
+                    html.Div([ # Start of div that holds the Current frame input
+                        html.P('Current Frame:', style={ "font-weight": "bold"}),
+                        dcc.Input(
+                            id="3dInput", type="number", placeholder="", value=1000, debounce=True, style={"height": "10px", "margin-left": "5px"},
+                        ),
+                    ],
+                    style={
+                        "display": "flex",
+                        "flex-direction": "row",
+                        "align-items": "center",
+                    }), # End of div that holds the Current frame input
+                ],
+                style={
+                    "display": "flex",
+                    "flex-direction": "row",
+                    "align-items": "center",
+                    "justify-content": "space-around",
+                }), # End of div that holds both the framerate and current frame inputs
+            html.P('Frame Slider', style={"margin": "0px", "font-weight": "bold"}),
+            html.Div([
+                dcc.Slider(
+                    0, frameLength, 1,
+                    value=0,
+                    id='3dInputSlider',
+                )], id="sliderDiv")
+            ]), # End of div that holds all framrate, current frame inputs and the sliders
         ],
         style={ # Styling for the 3D Visiaulization Div
-            'display': 'flex',
-            'width': '50vw',
-            "height": "100vh",
-            'align-items': 'center',
+            'display':'flex',
             'justify-content': 'center',
+            'width': '50%',
+            "height": "100vh",
             'flex-direction': 'column'
         }),        
     ],
     style={ #Styling for the Div that hold the two main divs (Dropdown and Times Series Divs, and the 3D Visualization Div)
         'display': 'flex',
-        'width' : '100%',
+        'width' : '100vw',
         'flex-direction': 'row-reverse',
-        "align-items": "center",
-    })
+    }) # End of the Div that holds eveyrthing
+    ],
+    style={
+        'width': '100vw'
+    }) # End of Dash App
+
 
     # Call back for drawing the timeseries graphs
     @app.callback(
