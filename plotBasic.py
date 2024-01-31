@@ -202,10 +202,11 @@ def base_plot(dfs, labels, frame):
                             hovertext= labels
                             ),
         ],
-        layout=go.Layout(#width=800, height=875, #TODO Setting that size of the plot seems to make it not responsive to a change in window size.
+        layout=go.Layout(#width='50vw', height=875, #TODO Setting that size of the plot seems to make it not responsive to a change in window size.
                         scene = scene_scaling,
                         title="Sample", #TODO change plot title
                         #slider= #TODO implement the frame slider
+                        margin=dict(l=0, r=0, b=0, t=0, pad=4),
                         updatemenus=[dict(type="buttons",
                                             x=0.6,
                                             y=0,
@@ -394,6 +395,7 @@ def dash():
                         "display": "flex",
                         "flex-direction": "row",
                         "align-items": "center",
+                        "flex-wrap": 'wrap'
                     }), # End of div that holds the framerate input
                     html.Div([ # Start of div that holds the Current frame input
                         html.P('Current Frame:', style={ "font-weight": "bold"}),
@@ -405,6 +407,7 @@ def dash():
                         "display": "flex",
                         "flex-direction": "row",
                         "align-items": "center",
+                        "flex-wrap": 'wrap'
                     }), # End of div that holds the Current frame input
                 ],
                 style={
@@ -412,6 +415,8 @@ def dash():
                     "flex-direction": "row",
                     "align-items": "center",
                     "justify-content": "space-around",
+                    "flex-wrap": 'wrap',
+                    'margin-bottom': '10px'
                 }), # End of div that holds both the framerate and current frame inputs
             html.P('Frame Slider', style={"margin": "0px", "font-weight": "bold"}),
             html.Div([
@@ -437,7 +442,7 @@ def dash():
     }) # End of the Div that holds eveyrthing
     ],
     style={
-        'width': '100vw'
+        'width': '100vw',
     }) # End of Dash App
 
 
