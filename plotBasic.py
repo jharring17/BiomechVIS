@@ -202,7 +202,7 @@ def base_plot(dfs, labels, frame):
                             hovertext= labels
                             ),
         ],
-        layout=go.Layout(#width='50vw', height=875, #TODO Setting that size of the plot seems to make it not responsive to a change in window size.
+        layout=go.Layout(#width='900', height=875, #TODO Setting that size of the plot seems to make it not responsive to a change in window size.
                         scene = scene_scaling,
                         title="Sample", #TODO change plot title
                         #slider= #TODO implement the frame slider
