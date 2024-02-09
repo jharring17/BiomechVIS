@@ -391,14 +391,16 @@ def dash():
             'width': '50%',
         }),
         html.Div([  # Div for the Actual 3D Visualization
-            dcc.Loading(
-                id="loading-graph4",
-                type="default",
-                children=[
-                    dcc.Input(id='dummy-input', value='dummy-value', style={'display': 'none'}),
-                    dcc.Graph(id="graph4", config={'responsive': True}),
-                ]
-            ),
+            html.Div([ # Div of the 3D graph Only
+                dcc.Loading(
+                    id="loading-graph4",
+                    type="default",
+                    children=[
+                        dcc.Input(id='dummy-input', value='dummy-value', style={'display': 'none'}),
+                        dcc.Graph(id="graph4", config={'responsive': True}),
+                    ]
+                ),
+            ], style={"height": "50vh"}), # End of Div for the 3D graph only
             html.Div([ # Start of div that holds all framrate, current frame inputs and the sliders
                 html.Div([ # Start of div that holds both the framerate and current frame inputs
                     html.Div([ # Start of div that holds the framerate input
