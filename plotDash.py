@@ -6,6 +6,7 @@ import pandas as pd
 import sys
 from dash import Dash, dcc, html, Input, Output, callback_context
 import plotly.express as px
+import dash_mantine_components as dmc
 
 #TODO color groups more distinctly 
 #want the df to hold group names instead of a numerical id for the group names
@@ -201,10 +202,11 @@ def base_plot(dfs, labels, frame):
                             hovertext= labels
                             ),
         ],
-        layout=go.Layout(width=800, height=875, #TODO dynamically set plot size (800 and 900)
+        layout=go.Layout(#width='900', height=875, #TODO Setting that size of the plot seems to make it not responsive to a change in window size.
                         scene = scene_scaling,
                         title="Sample", #TODO change plot title
                         #slider= #TODO implement the frame slider
+                        margin=dict(l=0, r=0, b=0, t=0, pad=4),
                         updatemenus=[dict(type="buttons",
                                             x=0.6,
                                             y=0,
@@ -295,28 +297,35 @@ def draw_timeseries(point, point_name=''):
     fig_z = go.Figure(data=go.Scatter(x=time, y=z, mode='markers+lines', line=dict(color='blue')), layout=go.Layout(title=f'Point {point_name} Z over time', xaxis_title='Frame', yaxis_title='Z'))
 
     fig_x.update_layout(
-        width=825,  
+        # width=825,  
         height=300,
     )
     fig_y.update_layout(
-        width=825,  
+        # width=825,  
         height=300,  
     )
     fig_z.update_layout(
-        width=825,  
+        # width=825,  
         height=300,
     )
     # fig_x.show()
     # fig_y.show()
     # fig_z.show()
+    fig_combined = go.Figure(data=[
+        go.Scatter(x=time, y=x, mode='markers+lines', name='X', line=dict(color='red')),
+        go.Scatter(x=time, y=y, mode='markers+lines', name='Y', line=dict(color='green')),
+        go.Scatter(x=time, y=z, mode='markers+lines', name='Z', line=dict(color='blue'))
+    ], layout=go.Layout(title=f'Combined Graph for {point_name}', xaxis_title='Frame', yaxis_title='Value'))
 
     global figureX
     global figureY
     global figureZ
+    global figureCombined
 
     figureX = fig_x
     figureY = fig_y
     figureZ = fig_z
+    figureCombined= fig_combined
 
 def detect_filetype(filename):
     loaded = sio.loadmat(filename)
@@ -343,22 +352,33 @@ def dash():
     app = Dash("plots")
     global frameLength
 
-    app.layout = html.Div([
+    app.layout = html.Div([ # Start of Dash App
+    
+    html.Div([ # Start of the Div that holds EVERYTHING
         html.Div([ # Div to hold the dropdown stuff and the time series graphs
             html.Div([ #Div for the drop Down stuff
                 html.H4('Interactive Graph Selection for Time Series', style={"margin": '0px', 'margin-top': '5px'}),
                 html.P("Select point:", style={"margin-top": '3px', "margin-bottom": "5px"}),
-                dcc.Dropdown(
+                html.Div([ # Div that hold dropdown and check box
+                    dcc.Dropdown(
                     id="dropdown",
                     options=list(points.keys()),
                     value='LHM2',
                     clearable=False,
-                )
+                    ),
+                    dcc.Checklist(['One Graph'], id='checkbox_hide')
+                ],
+                style={
+                    'display': 'flex',
+                    'flex-direction': 'column'   
+                }) # End of Div that holds dropdown an checkbox
+                
             ]),
             html.Div([ # Time Series Graphs Div
                 dcc.Graph(id="graph1"),
                 dcc.Graph(id="graph2"),
-                dcc.Graph(id="graph3")
+                dcc.Graph(id="graph3"),
+                dcc.Graph(id='graph_combined')
             ],
             style={ # Styling for the time Series Graphs Div
                 'display': 'flex',
@@ -379,10 +399,9 @@ def dash():
                     dcc.Graph(id="graph4", config={'responsive': True}),
                 ]
             ),
-            # html.H4('Input for 3d Graph:', style={"margin": "0px"}),
-            html.Div([
-                html.Div([
-                    html.Div([
+            html.Div([ # Start of div that holds all framrate, current frame inputs and the sliders
+                html.Div([ # Start of div that holds both the framerate and current frame inputs
+                    html.Div([ # Start of div that holds the framerate input
                         html.P("Framerate Input:", style={ "font-weight": "bold"}),
                         dcc.Input(
                             id="3dFramerateInput", type="number", placeholder="", value=8, debounce=True, style={"height": "10px", "margin-left": "5px"},
@@ -392,8 +411,9 @@ def dash():
                         "display": "flex",
                         "flex-direction": "row",
                         "align-items": "center",
-                    }),
-                    html.Div([
+                        "flex-wrap": 'wrap'
+                    }), # End of div that holds the framerate input
+                    html.Div([ # Start of div that holds the Current frame input
                         html.P('Current Frame:', style={ "font-weight": "bold"}),
                         dcc.Input(
                             id="3dInput", type="number", placeholder="", value=1000, debounce=True, style={"height": "10px", "margin-left": "5px"},
@@ -403,14 +423,17 @@ def dash():
                         "display": "flex",
                         "flex-direction": "row",
                         "align-items": "center",
-                    }),
+                        "flex-wrap": 'wrap'
+                    }), # End of div that holds the Current frame input
                 ],
                 style={
                     "display": "flex",
                     "flex-direction": "row",
                     "align-items": "center",
                     "justify-content": "space-around",
-                }),
+                    "flex-wrap": 'wrap',
+                    'margin-bottom': '10px'
+                }), # End of div that holds both the framerate and current frame inputs
             html.P('Frame Slider', style={"margin": "0px", "font-weight": "bold"}),
             html.Div([
                 dcc.Slider(
@@ -418,38 +441,64 @@ def dash():
                     value=0,
                     id='3dInputSlider',
                 )], id="sliderDiv")
-            ], 
-            style={
-                "margin-top": "auto",
-            }),
+            ]), # End of div that holds all framrate, current frame inputs and the sliders
         ],
         style={ # Styling for the 3D Visiaulization Div
+            'display':'flex',
+            'justify-content': 'center',
             'width': '50%',
             "height": "100vh",
+            'flex-direction': 'column'
         }),        
     ],
     style={ #Styling for the Div that hold the two main divs (Dropdown and Times Series Divs, and the 3D Visualization Div)
         'display': 'flex',
         'width' : '100%',
         'flex-direction': 'row-reverse',
-    })
+    }) # End of the Div that holds eveyrthing
+    ],
+    style={
+        'width': '98vw',
+        'overflow-x': 'hidden'
+    }) # End of Dash App
+
 
     # Call back for drawing the timeseries graphs
     @app.callback(
         [Output("graph1", "figure"),
         Output("graph2", "figure"),
-        Output("graph3", "figure")],
+        Output("graph3", "figure"),
+        Output("graph_combined", "figure")],
         Input("dropdown", "value"))
     def display_timeseries(pointname):
         draw_timeseries(points[pointname], pointname)
 
-        global figureX, figureY, figureZ
+        global figureX, figureY, figureZ, figureCombined
 
         fig_X = figureX
         fig_Y = figureY
         fig_Z = figureZ
+        fig_Combined = figureCombined
 
-        return fig_X, fig_Y, fig_Z
+        return fig_X, fig_Y, fig_Z, fig_Combined
+    
+    #Callback for showing Either three seperate graphs or showing one combined Graph
+    @app.callback(
+        [Output("graph1", "style"),
+        Output("graph2", "style"),
+        Output("graph3", "style"),
+        Output("graph_combined", "style")],
+        [Input("checkbox_hide", "value")]
+    )
+    def update_graph_visibility(checkbox_value):
+        if checkbox_value:
+            # If checkbox is checked, hide graphs
+            return {'display': 'none'}, {'display': 'none'}, {'display': 'none'}, {'display': 'block'}
+        else:
+            # If checkbox is not checked, show graphs
+            return {'display': 'block'}, {'display': 'block'}, {'display': 'block'}, {'display': 'none'}
+        
+
     # Callback for drawing the 3D Plot
     @app.callback(
         Output("graph4", "figure"), 
