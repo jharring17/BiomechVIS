@@ -507,10 +507,10 @@ def dash():
     def draw_3d_graph(startingFrame, framerate):
         points, COMs, axes, vectors = read_Mitchell_data(framerate)
         dfs, labels = filter_points_to_draw(points, COMs)
-        main_plot = base_plot(dfs, labels, startingFrame)
-        main_plot = draw_line(main_plot, [COMs['PELVIS'], points['LHM2']], [COMs['TORSO'], points['RHM2']], startingFrame)
-        main_plot = draw_anat_ax(main_plot, axes, COMs, startingFrame)
-        main_plot = draw_vectors(main_plot, vectors, startingFrame)
+        main_plot = base_plot(dfs, labels, startingFrame // framerate)
+        main_plot = draw_line(main_plot, [COMs['PELVIS'], points['LHM2']], [COMs['TORSO'], points['RHM2']], startingFrame // framerate)
+        main_plot = draw_anat_ax(main_plot, axes, COMs, startingFrame // framerate)
+        main_plot = draw_vectors(main_plot, vectors, startingFrame // framerate)
         return main_plot
     
     @app.callback(
@@ -533,7 +533,7 @@ def dash():
     def callback(framerate):
         points, COMs, axes, vectors = read_Mitchell_data(framerate)
         dfs, labels = filter_points_to_draw(points, COMs)
-        frameLength = len(dfs)
+        frameLength = len(dfs) * framerate
 
         div = html.Div([
             dcc.Slider(
@@ -560,13 +560,14 @@ def dash():
 figureX = ""
 figureY = ""
 figureZ = ""
+frameRate = 8
 
-points, COMs, axes, vectors = read_Mitchell_data(8)
+points, COMs, axes, vectors = read_Mitchell_data(frameRate)
 
 # draw_timeseries(points['LHM2'], 'LHM2')
 
 dfs, labels = filter_points_to_draw(points, COMs)
-frameLength = len(dfs)
+frameLength = len(dfs) * frameRate
 dash()
 
 # dfs, labels = filter_points_to_draw(points, COMs)
