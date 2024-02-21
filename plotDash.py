@@ -4,9 +4,9 @@ import scipy.io as sio
 import numpy as np
 import pandas as pd
 import sys
-from dash import Dash, dcc, html, Input, Output, callback_context
+from dash import Dash, dcc, html, Input, Output, State, callback_context
 import plotly.express as px
-import dash_mantine_components as dmc
+import os
 
 #TODO color groups more distinctly 
 #want the df to hold group names instead of a numerical id for the group names
@@ -14,6 +14,13 @@ import dash_mantine_components as dmc
 #TODO want a bar for the frame number
 #TODO plot axis
 # note we can use the add trace thing to make it so you can click to show points/groups and lines
+
+global filesList
+filesList = {}
+folder_path = sys.argv[1]
+filesList = {'AnatAx' : f'{folder_path}/Mitchell_AnatAx_Nairobi21.mat', 'SegCOM': f'{folder_path}/Mitchell_SegCOM_Nairobi21.mat', 
+             'TBCM' : f'{folder_path}/Mitchell_TBCM_Nairobi21.mat', 'TBCMVeloc' : f'{folder_path}/Mitchell_TBCMVeloc_Nairobi21.mat',
+             'MocapData' : f'{folder_path}/Mitchell_MocapData_Nairobi21.mat'}
 
 def load_from_mat(filename=None, data={}, loaded=None):
     '''Turn .mat file to nested dict of all values
@@ -43,16 +50,16 @@ def read_Mitchell_data(framerate):
     #Note: The data dict in load_from_math seems to carry over somehow? If I don't set it to {} Then SegCOM will change once we read MocapData for example - Gavin
     folder_path = sys.argv[1]
     # AnatAx => key = seg name, val = 3x3xN array for location so [frame][x_axis,y_axis,z_axis][x,y,z]
-    AnatAx = load_from_mat(f'{folder_path}/Mitchell_AnatAx_Nairobi21.mat', {})
+    AnatAx = load_from_mat(filesList['AnatAx'], {})
     #TBCMVeloc => need to read seperately.  It just has a data array which is Nx3 for locations
-    TBCMVeloc = sio.loadmat(f'{folder_path}/Mitchell_TBCMVeloc_Nairobi21.mat', struct_as_record=True)['Data']
+    TBCMVeloc = sio.loadmat(filesList['TBCMVeloc'], struct_as_record=True)['Data']
     #TBCM => need to read seperately.  It just has a data array which is Nx3 for locations 
-    TBCM  = sio.loadmat(f'{folder_path}/Mitchell_TBCM_Nairobi21.mat', struct_as_record=True)['Data']
+    TBCM  = sio.loadmat(filesList['TBCM'], struct_as_record=True)['Data']
     # SegCOM => key = seg name, val = Nx3 array for location (only first value populated?)
-    SegCOM = load_from_mat(f'{folder_path}/Mitchell_SegCOM_Nairobi21.mat', {})
+    SegCOM = load_from_mat(filesList['SegCOM'], {})
 
     # MocapData => key = point name, val = Nx3 array for location
-    MocapData = load_from_mat(f'{folder_path}/Mitchell_MocapData_Nairobi21.mat', {})
+    MocapData = load_from_mat(filesList['MocapData'], {})
 
     #make dictonary of points dfs indexed by point name
     final_points = {}
@@ -355,9 +362,36 @@ def dash():
     app.layout = html.Div([ # Start of Dash App
     
     html.Div([ # Start of the Div that holds EVERYTHING
+        dcc.Location(
+            id="url",
+            pathname="/",
+            refresh=True
+        ),
         html.Div([ # Div to hold the dropdown stuff and the time series graphs
             html.Div([ #Div for the drop Down stuff
                 html.H4('Interactive Graph Selection for Time Series', style={"margin": '0px', 'margin-top': '5px'}),
+                html.Div([
+                    dcc.Upload(
+                        id='upload-data',
+                        children=html.Div([
+                            'Drag and Drop or ',
+                            html.A('Select Files')
+                        ]),
+                        style={
+                            'width': '100%',
+                            'height': '60px',
+                            'lineHeight': '60px',
+                            'borderWidth': '1px',
+                            'borderStyle': 'dashed',
+                            'borderRadius': '5px',
+                            'textAlign': 'center',
+                            'margin': '10px'
+                        },
+                        # Allow multiple files to be uploaded
+                        multiple=True
+                        ),
+                ]),
+                html.Div(id='hidden-div', style={'display':'none'}),
                 html.P("Select point:", style={"margin-top": '3px', "margin-bottom": "5px"}),
                 html.Div([ # Div that hold dropdown and check box
                     dcc.Dropdown(
@@ -546,6 +580,33 @@ def dash():
         ], id="sliderDiv")
 
         return div
+    
+    @app.callback(
+        Output('url', 'href'),
+        Input('upload-data', 'contents'),
+        State('upload-data', 'filename'),
+        State('upload-data', 'last_modified'))
+    def update_output(list_of_contents, list_of_names, list_of_dates):
+        if list_of_contents is not None:
+            global filesList
+            #https://stackoverflow.com/questions/1124810/how-can-i-find-path-to-given-file
+            for filename in list_of_names:
+                for root, dirs, files in os.walk(os.getcwd()):
+                    for name in files:
+                        if name == filename:
+                            if "tbcm_" in filename.casefold():
+                                filesList['TBCM'] = os.path.abspath(os.path.join(root, name))
+                            if "tbcmveloc" in filename.casefold():
+                                filesList['TBCMVeloc'] = os.path.abspath(os.path.join(root, name))
+                            if "segcom" in filename.casefold():
+                                filesList['SegCOM'] = os.path.abspath(os.path.join(root, name))
+                            if "anatax" in filename.casefold():
+                                filesList['AnatAx'] = os.path.abspath(os.path.join(root, name))
+                            if "mocap" in filename.casefold():
+                                filesList['MocapData'] = os.path.abspath(os.path.join(root, name))
+            print(filesList)
+            # read_Mitchell_data(frameRate)
+            return '/'
 
 
 
