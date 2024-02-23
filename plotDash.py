@@ -29,8 +29,9 @@ def load_from_mat(filename=None, data={}, loaded=None):
         vrs = sio.whosmat(filename)
         #name = vrs[0][0]
         loaded = sio.loadmat(filename,struct_as_record=True)
-        loaded = loaded["Data"] #Data is labeled differently, so just specified data field - Nick
-        
+        if 'Data' in loaded.keys():
+            loaded = loaded["Data"] #Data is labeled differently, so just specified data field - Nick
+
     whats_inside = loaded.dtype.fields
     fields = list(whats_inside.keys())
     for field in fields:
@@ -209,10 +210,9 @@ def base_plot(dfs, labels, frame):
                             hovertext= labels
                             ),
         ],
-        layout=go.Layout(#width='900', height=875, #TODO Setting that size of the plot seems to make it not responsive to a change in window size.
+        layout=go.Layout(#TODO Setting that size of the plot seems to make it not responsive to a change in window size.
                         scene = scene_scaling,
-                        title="Sample", #TODO change plot title
-                        #slider= #TODO implement the frame slider
+                        title="BiomechOS",
                         margin=dict(l=0, r=0, b=0, t=0, pad=4),
                         updatemenus=[dict(type="buttons",
                                             x=0.6,
@@ -324,15 +324,7 @@ def draw_timeseries(point, point_name=''):
         go.Scatter(x=time, y=z, mode='markers+lines', name='Z', line=dict(color='blue'))
     ], layout=go.Layout(title=f'Combined Graph for {point_name}', xaxis_title='Frame', yaxis_title='Value'))
 
-    global figureX
-    global figureY
-    global figureZ
-    global figureCombined
-
-    figureX = fig_x
-    figureY = fig_y
-    figureZ = fig_z
-    figureCombined= fig_combined
+    return [fig_x, fig_y, fig_z, fig_combined]
 
 def detect_filetype(filename):
     loaded = sio.loadmat(filename)
@@ -397,7 +389,7 @@ def dash():
                     dcc.Dropdown(
                     id="dropdown",
                     options=list(points.keys()),
-                    value='LHM2',
+                    value=list(points.keys())[0],
                     clearable=False,
                     ),
                     dcc.Checklist(['One Graph'], id='checkbox_hide')
@@ -498,6 +490,19 @@ def dash():
         'overflow-x': 'hidden'
     }) # End of Dash App
 
+    # Callback for drawing the 3D Plot
+    @app.callback(
+        Output("graph4", "figure"), 
+        Input("3dInputSlider", "value"),
+        Input("3dFramerateInput", "value"))
+    def draw_3d_graph(startingFrame, framerate):
+        points, COMs, axes, vectors = read_Mitchell_data(framerate)
+        dfs, labels = filter_points_to_draw(points, COMs)
+        main_plot = base_plot(dfs, labels, startingFrame // framerate)
+        main_plot = draw_line(main_plot, [COMs[list(COMs.keys())[0]], points[list(points.keys())[0]]], [COMs[list(COMs.keys())[1]], points[list(points.keys())[1]]], startingFrame // framerate)
+        main_plot = draw_anat_ax(main_plot, axes, COMs, startingFrame // framerate)
+        main_plot = draw_vectors(main_plot, vectors, startingFrame // framerate)
+        return main_plot
 
     # Call back for drawing the timeseries graphs
     @app.callback(
@@ -505,18 +510,12 @@ def dash():
         Output("graph2", "figure"),
         Output("graph3", "figure"),
         Output("graph_combined", "figure")],
-        Input("dropdown", "value"))
-    def display_timeseries(pointname):
-        draw_timeseries(points[pointname], pointname)
+        Input("dropdown", "value"),
+        Input('upload-data', 'contents'))
+    def display_timeseries(pointname, filecontents):
+        timeseriesGraphs = draw_timeseries(points[pointname], pointname)
 
-        global figureX, figureY, figureZ, figureCombined
-
-        fig_X = figureX
-        fig_Y = figureY
-        fig_Z = figureZ
-        fig_Combined = figureCombined
-
-        return fig_X, fig_Y, fig_Z, fig_Combined
+        return timeseriesGraphs[0], timeseriesGraphs[1], timeseriesGraphs[2], timeseriesGraphs[3]
     
     #Callback for showing Either three seperate graphs or showing one combined Graph
     @app.callback(
@@ -533,21 +532,6 @@ def dash():
         else:
             # If checkbox is not checked, show graphs
             return {'display': 'block'}, {'display': 'block'}, {'display': 'block'}, {'display': 'none'}
-        
-
-    # Callback for drawing the 3D Plot
-    @app.callback(
-        Output("graph4", "figure"), 
-        Input("3dInputSlider", "value"),
-        Input("3dFramerateInput", "value"))
-    def draw_3d_graph(startingFrame, framerate):
-        points, COMs, axes, vectors = read_Mitchell_data(framerate)
-        dfs, labels = filter_points_to_draw(points, COMs)
-        main_plot = base_plot(dfs, labels, startingFrame // framerate)
-        main_plot = draw_line(main_plot, [COMs['PELVIS'], points['LHM2']], [COMs['TORSO'], points['RHM2']], startingFrame // framerate)
-        main_plot = draw_anat_ax(main_plot, axes, COMs, startingFrame // framerate)
-        main_plot = draw_vectors(main_plot, vectors, startingFrame // framerate)
-        return main_plot
     
     @app.callback(
         Output("3dInput", "value"),
@@ -604,7 +588,6 @@ def dash():
                                 filesList['AnatAx'] = os.path.abspath(os.path.join(root, name))
                             if "mocap" in filename.casefold():
                                 filesList['MocapData'] = os.path.abspath(os.path.join(root, name))
-            print(filesList)
             # read_Mitchell_data(frameRate)
             return '/'
 
