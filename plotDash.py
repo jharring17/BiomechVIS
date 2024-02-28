@@ -215,9 +215,9 @@ def base_plot(dfs, labels, frame):
                         title="BiomechOS",
                         margin=dict(l=0, r=0, b=0, t=0, pad=4),
                         updatemenus=[dict(type="buttons",
-                                            x=0.6,
-                                            y=0,
-                                            direction="right",
+                                            x=0.9,
+                                            y=0.5,
+                                            direction="down",
                                             buttons=[dict(label="Play",
                                                         method="animate",
                                                         args=[None, {"fromcurrent": True, "frame": {"duration": 50, 'redraw': True}, "transition": {"duration": 0}}]), #TODO verify this controls the speed https://plotly.com/javascript/animations/
@@ -352,6 +352,22 @@ def dash():
     global frameLength
 
     app.layout = html.Div([ # Start of Dash App
+        html.Link(
+        rel='stylesheet',
+        href='/assets/styles.css'  # Adjust the path to your CSS file
+    ),
+        html.Header(
+        html.H1("BiomechOS", style={'textAlign': 'center'}),
+        style={
+            'background-color': '#4da2f7',  # Set the background color of the header
+            'padding': '0px',
+            'padding-top': '5px',  # Set padding for the header
+            'padding-bottom': '5px',  # Set padding for the header
+            'color': 'white',  # Set text color
+            'width': '100%',
+
+        }
+    ),
     
     html.Div([ # Start of the Div that holds EVERYTHING
         dcc.Location(
@@ -370,7 +386,7 @@ def dash():
                             html.A('Select Files')
                         ]),
                         style={
-                            'width': '100%',
+                            'width': '98%',
                             'height': '60px',
                             'lineHeight': '60px',
                             'borderWidth': '1px',
@@ -415,6 +431,8 @@ def dash():
             'display': 'flex',
             'flex-direction': 'column',
             'width': '50%',
+            'margin-right': '10px'
+
         }),
         html.Div([  # Div for the Actual 3D Visualization
             html.Div([ # Div of the 3D graph Only
@@ -476,18 +494,22 @@ def dash():
             'justify-content': 'center',
             'width': '50%',
             "height": "100vh",
-            'flex-direction': 'column'
+            'flex-direction': 'column',
+            'margin-left': '10px'
         }),        
     ],
     style={ #Styling for the Div that hold the two main divs (Dropdown and Times Series Divs, and the 3D Visualization Div)
         'display': 'flex',
         'width' : '100%',
         'flex-direction': 'row-reverse',
+        'height': '100%'
     }) # End of the Div that holds eveyrthing
     ],
     style={
-        'width': '98vw',
-        'overflow-x': 'hidden'
+        'width': '100%',
+        'overflow-x': 'hidden',
+        'padding': '0px',
+        'margin': '0px'
     }) # End of Dash App
 
     # Callback for drawing the 3D Plot

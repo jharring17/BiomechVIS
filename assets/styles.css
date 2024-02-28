@@ -1,0 +1,8 @@
+body, html {
+    margin: 0;
+    padding: 0;  
+}
+
+#sliderDiv .rc-slider-mark {
+    display: none;
+}
