@@ -7,6 +7,8 @@ import sys
 from dash import Dash, dcc, html, Input, Output, State, callback_context
 import plotly.express as px
 import os
+import tkinter as tk
+from tkinter import filedialog
 
 #TODO color groups more distinctly 
 #want the df to hold group names instead of a numerical id for the group names
@@ -17,10 +19,9 @@ import os
 
 global filesList
 filesList = {}
-folder_path = sys.argv[1]
-filesList = {'AnatAx' : f'{folder_path}/Mitchell_AnatAx_Nairobi21.mat', 'SegCOM': f'{folder_path}/Mitchell_SegCOM_Nairobi21.mat', 
-             'TBCM' : f'{folder_path}/Mitchell_TBCM_Nairobi21.mat', 'TBCMVeloc' : f'{folder_path}/Mitchell_TBCMVeloc_Nairobi21.mat',
-             'MocapData' : f'{folder_path}/Mitchell_MocapData_Nairobi21.mat'}
+filesList = {'AnatAx' : f'', 'SegCOM': f'', 
+             'TBCM' : f'', 'TBCMVeloc' : f'',
+             'MocapData' : f''}
 
 def load_from_mat(filename=None, data={}, loaded=None):
     '''Turn .mat file to nested dict of all values
@@ -49,7 +50,7 @@ def read_Mitchell_data(framerate):
     Returns dictonary of COM dfs and dictonary of points dfs'''
     #TODO update to take general file names in given folder
     #Note: The data dict in load_from_math seems to carry over somehow? If I don't set it to {} Then SegCOM will change once we read MocapData for example - Gavin
-    folder_path = sys.argv[1]
+    #folder_path = sys.argv[1]
     # AnatAx => key = seg name, val = 3x3xN array for location so [frame][x_axis,y_axis,z_axis][x,y,z]
     AnatAx = load_from_mat(filesList['AnatAx'], {})
     #TBCMVeloc => need to read seperately.  It just has a data array which is Nx3 for locations
@@ -347,9 +348,36 @@ def detect_filetype(filename):
 
     return filetype
 
+def UploadAction(event=None):
+    filenames = filedialog.askopenfilenames()
+
+    global filesList
+            #https://stackoverflow.com/questions/1124810/how-can-i-find-path-to-given-file
+    for filename in filenames:
+        if "tbcm_" in filename.casefold():
+            filesList['TBCM'] = filename
+        if "tbcmveloc" in filename.casefold():
+            filesList['TBCMVeloc'] = filename
+        if "segcom" in filename.casefold():
+            filesList['SegCOM'] = filename
+        if "anatax" in filename.casefold():
+            filesList['AnatAx'] = filename
+        if "mocap" in filename.casefold():
+            filesList['MocapData'] = filename
+
+    global points, COMs, axes, vectors
+    global dfs, labels
+    global frameLength
+    points, COMs, axes, vectors = read_Mitchell_data(frameRate)
+    dfs, labels = filter_points_to_draw(points, COMs)
+    frameLength = len(dfs) * frameRate
+    root.destroy()
+    dash()
+
 def dash():
     app = Dash("plots")
     global frameLength
+    global points
 
     app.layout = html.Div([ # Start of Dash App
         html.Link(
@@ -398,14 +426,17 @@ def dash():
                         # Allow multiple files to be uploaded
                         multiple=True
                         ),
+                        html.Button('Submit', id='submit-val', n_clicks=0)
                 ]),
-                html.Div(id='hidden-div', style={'display':'none'}),
+                html.Div(id='hidden-div', children=[
+                    html.P('', id="chainCallback")
+                ], style={'display':'none'}),
                 html.P("Select point:", style={"margin-top": '3px', "margin-bottom": "5px"}),
                 html.Div([ # Div that hold dropdown and check box
                     dcc.Dropdown(
                     id="dropdown",
                     options=list(points.keys()),
-                    value=list(points.keys())[0],
+                    value= list(points.keys())[0],
                     clearable=False,
                     ),
                     dcc.Checklist(['One Graph'], id='checkbox_hide')
@@ -516,8 +547,11 @@ def dash():
     @app.callback(
         Output("graph4", "figure"), 
         Input("3dInputSlider", "value"),
-        Input("3dFramerateInput", "value"))
-    def draw_3d_graph(startingFrame, framerate):
+        Input("3dFramerateInput", "value"),
+        Input('upload-data', 'contents'))
+    def draw_3d_graph(startingFrame, framerate, filecontents):
+        global points, COMs, axes, vectors
+        global dfs, labels
         points, COMs, axes, vectors = read_Mitchell_data(framerate)
         dfs, labels = filter_points_to_draw(points, COMs)
         main_plot = base_plot(dfs, labels, startingFrame // framerate)
@@ -571,11 +605,10 @@ def dash():
     
     @app.callback(
         Output("sliderDiv", "children"),
-        Input("3dFramerateInput", "value"))
-    def callback(framerate):
-        points, COMs, axes, vectors = read_Mitchell_data(framerate)
-        dfs, labels = filter_points_to_draw(points, COMs)
-        frameLength = len(dfs) * framerate
+        Input("3dFramerateInput", "value"),
+        Input('chainCallback', 'children'))
+    def callback(framerate, chainCallbackValue):
+        global frameLength
 
         div = html.Div([
             dcc.Slider(
@@ -588,10 +621,13 @@ def dash():
         return div
     
     @app.callback(
-        Output('url', 'href'),
+        Output('dropdown', 'value'),
+        Output('dropdown', 'options'),
+        Output('chainCallback', 'children'),
         Input('upload-data', 'contents'),
         State('upload-data', 'filename'),
-        State('upload-data', 'last_modified'))
+        State('upload-data', 'last_modified'),
+        prevent_initial_call=True)
     def update_output(list_of_contents, list_of_names, list_of_dates):
         if list_of_contents is not None:
             global filesList
@@ -611,10 +647,16 @@ def dash():
                             if "mocap" in filename.casefold():
                                 filesList['MocapData'] = os.path.abspath(os.path.join(root, name))
             # read_Mitchell_data(frameRate)
-            return '/'
+            global points, COMs, axes, vectors
+            global dfs, labels
+            global frameLength
+            points, COMs, axes, vectors = read_Mitchell_data(frameRate)
+            dfs, labels = filter_points_to_draw(points, COMs)
+            frameLength = len(dfs) * frameRate
+            return list(points.keys())[0], list(points.keys()), frameLength
 
 
-
+    #When giving code, set debug to true to make only one tkinter run needed
     app.run_server(debug=True)
 
 # folder_path = sys.argv[1]
@@ -630,13 +672,15 @@ figureY = ""
 figureZ = ""
 frameRate = 8
 
-points, COMs, axes, vectors = read_Mitchell_data(frameRate)
+global points, COMs, axes, vectors
+global dfs, labels
 
-# draw_timeseries(points['LHM2'], 'LHM2')
 
-dfs, labels = filter_points_to_draw(points, COMs)
-frameLength = len(dfs) * frameRate
-dash()
+root = tk.Tk()
+button = tk.Button(root, text='Open', command=UploadAction)
+button.pack()
+
+root.mainloop()
 
 # dfs, labels = filter_points_to_draw(points, COMs)
 # main_plot = base_plot(dfs, labels)
