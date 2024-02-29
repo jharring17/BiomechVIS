@@ -426,7 +426,6 @@ def dash():
                         # Allow multiple files to be uploaded
                         multiple=True
                         ),
-                        html.Button('Submit', id='submit-val', n_clicks=0)
                 ]),
                 html.Div(id='hidden-div', children=[
                     html.P('', id="chainCallback")
