@@ -760,8 +760,8 @@ def dash():
         return div
     
     @app.callback(
-        # Output('dropdown', 'value'),
-        # Output('dropdown', 'options'),
+        Output('addNewGraphDropdown', 'value'),
+        Output('addNewGraphDropdown', 'options'),
         Output('chainCallback', 'children'),
         Input('upload-data', 'contents'),
         State('upload-data', 'filename'),
