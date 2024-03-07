@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import sys
 from dash import Dash, dcc, html, Input, Output, State, callback_context
+import dash_bootstrap_components as dbc
 import plotly.express as px
 import os
 import tkinter as tk
@@ -293,39 +294,34 @@ def draw_line(plot, froms, tos, startingFrame, cs='red', name='lines'):
 
     return plot
 
-def draw_timeseries(point, point_name=''):
-    '''Shows x, y and z timeseries for a given point'''
-    x = point[:,0].T
-    y = point[:,1].T
-    z = point[:,2].T
-    time = list(range(len(z)))
+# def draw_timeseries(point, point_name=''):
+#     '''Shows x, y and z timeseries for a given point'''
+#     x = point[:,0].T
+#     y = point[:,1].T
+#     z = point[:,2].T
+#     time = list(range(len(z)))
 
-    fig_x = go.Figure(data=go.Scatter(x=time, y=x, mode='markers+lines', line=dict(color='red')), layout=go.Layout(title=f'Point {point_name} X over time', xaxis_title='Frame', yaxis_title='X'))
-    fig_y = go.Figure(data=go.Scatter(x=time, y=y, mode='markers+lines', line=dict(color='green')), layout=go.Layout(title=f'Point {point_name} Y over time', xaxis_title='Frame', yaxis_title='Y'))
-    fig_z = go.Figure(data=go.Scatter(x=time, y=z, mode='markers+lines', line=dict(color='blue')), layout=go.Layout(title=f'Point {point_name} Z over time', xaxis_title='Frame', yaxis_title='Z'))
+#     fig_x = go.Figure(data=go.Scatter(x=time, y=x, mode='markers+lines', line=dict(color='red')), layout=go.Layout(title=f'Point {point_name} X over time', xaxis_title='Frame', yaxis_title='X'))
+#     fig_y = go.Figure(data=go.Scatter(x=time, y=y, mode='markers+lines', line=dict(color='green')), layout=go.Layout(title=f'Point {point_name} Y over time', xaxis_title='Frame', yaxis_title='Y'))
+#     fig_z = go.Figure(data=go.Scatter(x=time, y=z, mode='markers+lines', line=dict(color='blue')), layout=go.Layout(title=f'Point {point_name} Z over time', xaxis_title='Frame', yaxis_title='Z'))
 
-    fig_x.update_layout(
-        # width=825,  
-        height=300,
-    )
-    fig_y.update_layout(
-        # width=825,  
-        height=300,  
-    )
-    fig_z.update_layout(
-        # width=825,  
-        height=300,
-    )
-    # fig_x.show()
-    # fig_y.show()
-    # fig_z.show()
-    fig_combined = go.Figure(data=[
-        go.Scatter(x=time, y=x, mode='markers+lines', name='X', line=dict(color='red')),
-        go.Scatter(x=time, y=y, mode='markers+lines', name='Y', line=dict(color='green')),
-        go.Scatter(x=time, y=z, mode='markers+lines', name='Z', line=dict(color='blue'))
-    ], layout=go.Layout(title=f'Combined Graph for {point_name}', xaxis_title='Frame', yaxis_title='Value'))
+#     fig_x.update_layout(
+#         height=300,
+#     )
+#     fig_y.update_layout(
+#         height=300,  
+#     )
+#     fig_z.update_layout(
+#         height=300,
+#     )
 
-    return [fig_x, fig_y, fig_z, fig_combined]
+#     fig_combined = go.Figure(data=[
+#         go.Scatter(x=time, y=x, mode='markers+lines', name='X', line=dict(color='red')),
+#         go.Scatter(x=time, y=y, mode='markers+lines', name='Y', line=dict(color='green')),
+#         go.Scatter(x=time, y=z, mode='markers+lines', name='Z', line=dict(color='blue'))
+#     ], layout=go.Layout(title=f'Combined Graph for {point_name}', xaxis_title='Frame', yaxis_title='Value'))
+
+#     return [fig_x, fig_y, fig_z, fig_combined]
 
 def detect_filetype(filename):
     loaded = sio.loadmat(filename)
@@ -375,7 +371,7 @@ def UploadAction(event=None):
     dash()
 
 def dash():
-    app = Dash("plots")
+    app = Dash("plots", external_stylesheets=[dbc.themes.BOOTSTRAP])
     global frameLength
     global points
 
@@ -397,6 +393,44 @@ def dash():
         }
     ),
     
+    dbc.Modal(id = "customizeGraphModal", children=[
+            dbc.ModalHeader("2D Graph Customizer"),
+            dbc.ModalBody("This is a basic modal. You can add any content here."),
+            dbc.ModalFooter(dbc.Button("Close", id="close-customize-modal", className="ml-auto")),
+            ], backdrop="static",
+    ),
+    dbc.Modal(id = "newGraphModal", children=[
+            dbc.ModalHeader("Add New 2D Graph"),
+            dbc.ModalBody([
+                html.H5("Select the data you would like to graph:"),
+                html.Div([ # Div that hold dropdown
+                    dcc.Dropdown(
+                        id="addNewGraphDropdown",
+                        options=[{"label": point, "value": point} for point in points.keys()],
+                        value= list(points.keys())[0],
+                        clearable=False,
+                        style={'width': '95%'}
+                    ),
+                    dcc.Dropdown(
+                        id="xyzDropdown",
+                        options=[{"label": "X", "value": "X"},
+                                {"label": "Y", "value": "Y"},
+                                {"label": "Z", "value": "Z"}],
+                        value="X",
+                        clearable=False,
+                        style={'width': '10%'}
+                    )],
+                style={
+                    'display': 'flex',
+                    'flex-direction': 'row',
+
+                }) 
+
+            ]),
+            dbc.ModalFooter([dbc.Button("Cancel", id="cancel-add-new-modal", className="ml-auto", style={'background': '#ededed', 'color': 'black', 'border-color': 'black'}),
+                             dbc.Button("Submit", id="submit-add-new-modal", className="ml-auto", style={'border-color': 'black'})]),
+            ], backdrop="static",
+    ),
     html.Div([ # Start of the Div that holds EVERYTHING
         dcc.Location(
             id="url",
@@ -430,15 +464,8 @@ def dash():
                 html.Div(id='hidden-div', children=[
                     html.P('', id="chainCallback")
                 ], style={'display':'none'}),
-                html.P("Select point:", style={"margin-top": '3px', "margin-bottom": "5px"}),
                 html.Div([ # Div that hold dropdown and check box
-                    dcc.Dropdown(
-                    id="dropdown",
-                    options=list(points.keys()),
-                    value= list(points.keys())[0],
-                    clearable=False,
-                    ),
-                    dcc.Checklist(['One Graph'], id='checkbox_hide')
+                    dcc.Checklist(['View Combined Graph'], id='checkbox_hide')
                 ],
                 style={
                     'display': 'flex',
@@ -446,15 +473,22 @@ def dash():
                 }) # End of Div that holds dropdown an checkbox
                 
             ]),
-            html.Div([ # Time Series Graphs Div
-                dcc.Graph(id="graph1"),
-                dcc.Graph(id="graph2"),
-                dcc.Graph(id="graph3"),
-                dcc.Graph(id='graph_combined')
+            html.Div(id="outer-2d-graph-div", children=[ # Time Series Graphs Div
+                html.Div(id="inner-2d-graph-div", children=[
+                    html.Div(id='add-new-btn-and-graphs-div', children=[
+                        html.Div(id="normal-graphs-div", children=[]),
+                        html.Button("Add New 2D Graph", id="addNew2dGraphBtn")
+                    ]),
+                    html.Div( id = "combined-graph-div", children=[
+                        dcc.Graph(id='graph-combined'),
+                    ]),
+                ]),
             ],
             style={ # Styling for the time Series Graphs Div
                 'display': 'flex',
-                'flex-direction': 'column'
+                'flex-direction': 'column',
+                'overflow': 'auto',
+                'max-height': '70vh'
             })
         ],
         style={ # Styling for the Div that holds the Dropdown menu and the Times Series Graph
@@ -478,27 +512,29 @@ def dash():
             html.Div([ # Start of div that holds all framrate, current frame inputs and the sliders
                 html.Div([ # Start of div that holds both the framerate and current frame inputs
                     html.Div([ # Start of div that holds the framerate input
-                        html.P("Framerate Input:", style={ "font-weight": "bold"}),
+                        html.P("Framerate Input:", style={ "font-weight": "bold", 'margin': '0px'}),
                         dcc.Input(
-                            id="3dFramerateInput", type="number", placeholder="", value=8, debounce=True, style={"height": "10px", "margin-left": "5px"},
+                            id="3dFramerateInput", type="number", placeholder="", value=8, debounce=True, style={"height": "20px", "margin-left": "5px"},
                         ),
                     ],
                     style={
                         "display": "flex",
                         "flex-direction": "row",
                         "align-items": "center",
+                        "justify-content": "center",
                         "flex-wrap": 'wrap'
                     }), # End of div that holds the framerate input
                     html.Div([ # Start of div that holds the Current frame input
-                        html.P('Current Frame:', style={ "font-weight": "bold"}),
+                        html.P('Current Frame:', style={ "font-weight": "bold", 'margin': '0px'}),
                         dcc.Input(
-                            id="3dInput", type="number", placeholder="", value=1000, debounce=True, style={"height": "10px", "margin-left": "5px"},
+                            id="3dInput", type="number", placeholder="", value=1000, debounce=True, style={"height": "20px", "margin-left": "5px"},
                         ),
                     ],
                     style={
                         "display": "flex",
                         "flex-direction": "row",
                         "align-items": "center",
+                        "justify-content": "center",
                         "flex-wrap": 'wrap'
                     }), # End of div that holds the Current frame input
                 ],
@@ -508,7 +544,9 @@ def dash():
                     "align-items": "center",
                     "justify-content": "space-around",
                     "flex-wrap": 'wrap',
-                    'margin-bottom': '10px'
+                    'margin-top': '30px',
+                    'margin-bottom': '30px'
+
                 }), # End of div that holds both the framerate and current frame inputs
             html.P('Frame Slider', style={"margin": "0px", "font-weight": "bold"}),
             html.Div([
@@ -532,16 +570,16 @@ def dash():
         'display': 'flex',
         'width' : '100%',
         'flex-direction': 'row-reverse',
-        'height': '100%'
+        'height': '90vh'
     }) # End of the Div that holds eveyrthing
     ],
     style={
         'width': '100%',
-        'overflow-x': 'hidden',
         'padding': '0px',
         'margin': '0px'
     }) # End of Dash App
 
+   
     # Callback for drawing the 3D Plot
     @app.callback(
         Output("graph4", "figure"), 
@@ -559,34 +597,97 @@ def dash():
         main_plot = draw_vectors(main_plot, vectors, startingFrame // framerate)
         return main_plot
 
-    # Call back for drawing the timeseries graphs
-    @app.callback(
-        [Output("graph1", "figure"),
-        Output("graph2", "figure"),
-        Output("graph3", "figure"),
-        Output("graph_combined", "figure")],
-        Input("dropdown", "value"),
-        Input('upload-data', 'contents'))
-    def display_timeseries(pointname, filecontents):
-        timeseriesGraphs = draw_timeseries(points[pointname], pointname)
 
-        return timeseriesGraphs[0], timeseriesGraphs[1], timeseriesGraphs[2], timeseriesGraphs[3]
+    # @app.callback(
+    #     Output("inner-2d-graph-div", "children"),
+    #     [Input("addNew2dGraphBtn", "n_clicks")],
+    #     [State("inner-2d-graph-div", "children")], prevent_initial_call=True
+    # )
+    # def add_graph(n_clicks, current_children):
+
+    @app.callback(
+    Output("newGraphModal", "is_open"),
+    [Input("addNew2dGraphBtn", "n_clicks"),
+    Input("cancel-add-new-modal", "n_clicks"),
+    Input("submit-add-new-modal", "n_clicks")],
+    [State("newGraphModal", "is_open")]
+    )   
+    def toggle_add_new_modal(n_clicks_open, n_clicks_close, n_clicks_submit, is_open):
+        if n_clicks_open or n_clicks_close or n_clicks_submit:
+            return not is_open
+        else:
+            return is_open
+        
+    @app.callback(
+        [Output("normal-graphs-div", "children"),
+            Output("graph-combined", "figure")],
+        [Input("submit-add-new-modal", "n_clicks")],
+        [State("addNewGraphDropdown", "value"),
+        State("xyzDropdown", "value"), 
+        State("normal-graphs-div", "children"),
+        State("graph-combined", "figure")], prevent_initial_call=True
+    )
+    def add_new_graph(submit_clicks, selected_point_key, selected_xyz, current_children, current_combined_figure):
+        current_combined_figure = go.Figure(current_combined_figure)
+
+        selected_point = points[selected_point_key]  
+
+        if selected_xyz == "X":
+            point = selected_point[:, 0].T
+            lineColor = "red"
+        elif selected_xyz == "Y":
+            point = selected_point[:, 1].T
+            lineColor = "green"
+        elif selected_xyz == "Z":
+            point = selected_point[:, 2].T
+            lineColor = "blue"
+
+        time = list(range(len(point)))
+
+        if current_combined_figure is None:
+            current_combined_figure = go.Figure()
+
+        if submit_clicks:
+            fig = go.Figure(data=go.Scatter(x=time, y=point, mode='markers+lines', line=dict(color=lineColor)),
+                            layout=go.Layout(title=f'Point {selected_point_key} {selected_xyz} over time', xaxis_title='Frame',
+                                            yaxis_title=f'{selected_xyz}', height=300))
+
+            current_children.append(html.Div(className='dynamically-added-graph-divs', children=[
+                                        dcc.Graph(figure=fig),
+                                        # html.Button("Remove Graph",className='remove-graph-button', style={'margin': '10px'})
+                                        ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'flex-direction': 'column'})) 
+            current_combined_figure.add_trace(go.Scatter(x=time, y=point, mode='markers+lines', line=dict(color=lineColor), name=f"{selected_point_key} {selected_xyz}"))    
+            current_combined_figure.update_layout(title=f'Combined Graph of all data point selected over time',
+                                              xaxis_title='Frame', yaxis_title='Value', height=600)       
+            return current_children, current_combined_figure
+        
+        return current_children, current_combined_figure
+
+
+    # @app.callback(
+    # Output("customizeGraphModal", "is_open"),
+    # [Input("customize2dGraph-1", "n_clicks"),
+    #  Input("close-customize-modal", "n_clicks")],
+    # [State("customizeGraphModal", "is_open")]
+    # )
+    # def toggle_customize_modal(n_clicks_open, n_clicks_close, is_open):
+    #     if n_clicks_open or n_clicks_close:
+    #         return not is_open
+    #     else:
+    #         return is_open
     
     #Callback for showing Either three seperate graphs or showing one combined Graph
     @app.callback(
-        [Output("graph1", "style"),
-        Output("graph2", "style"),
-        Output("graph3", "style"),
-        Output("graph_combined", "style")],
+        [Output('add-new-btn-and-graphs-div', 'style'), Output('combined-graph-div', 'style')],
         [Input("checkbox_hide", "value")]
     )
     def update_graph_visibility(checkbox_value):
         if checkbox_value:
             # If checkbox is checked, hide graphs
-            return {'display': 'none'}, {'display': 'none'}, {'display': 'none'}, {'display': 'block'}
+            return {'display': 'none'}, {'display': 'block'}
         else:
             # If checkbox is not checked, show graphs
-            return {'display': 'block'}, {'display': 'block'}, {'display': 'block'}, {'display': 'none'}
+            return {'display': 'block'}, {'display': 'none'}
     
     @app.callback(
         Output("3dInput", "value"),
@@ -620,8 +721,8 @@ def dash():
         return div
     
     @app.callback(
-        Output('dropdown', 'value'),
-        Output('dropdown', 'options'),
+        # Output('dropdown', 'value'),
+        # Output('dropdown', 'options'),
         Output('chainCallback', 'children'),
         Input('upload-data', 'contents'),
         State('upload-data', 'filename'),
@@ -652,20 +753,13 @@ def dash():
             points, COMs, axes, vectors = read_Mitchell_data(frameRate)
             dfs, labels = filter_points_to_draw(points, COMs)
             frameLength = len(dfs) * frameRate
+            allLineGraphed ={}
             return list(points.keys())[0], list(points.keys()), frameLength
 
 
-    #When giving code, set debug to true to make only one tkinter run needed
+    #When giving code, set debug to False to make only one tkinter run needed
     app.run_server(debug=True)
 
-# folder_path = sys.argv[1]
-# print(detect_filetype(f'{folder_path}/Mitchell_AnatAx_Nairobi21.mat')) 
-# print(detect_filetype(f'{folder_path}/Mitchell_TBCMVeloc_Nairobi21.mat')) 
-# print(detect_filetype(f'{folder_path}/Mitchell_TBCM_Nairobi21.mat'))
-# print(detect_filetype(f'{folder_path}/Mitchell_SegCOM_Nairobi21.mat'))
-# print(detect_filetype(f'{folder_path}/Mitchell_MocapData_Nairobi21.mat')) 
-
-#Global Variables, can be changed when draw time series is deconstructed for individual parts
 figureX = ""
 figureY = ""
 figureZ = ""
@@ -673,19 +767,17 @@ frameRate = 8
 
 global points, COMs, axes, vectors
 global dfs, labels
+global allLineGraphed
 
 
 root = tk.Tk()
-button = tk.Button(root, text='Open', command=UploadAction)
-button.pack()
+root.geometry("300x100")
+root.config(bg = "#d6d6d6")
+root.title("BiomechOS")
+root.resizable(False,False)
+text = tk.Label(root, text = "Selct Files to Use:", font=("Times New Roman", "12"), padx=5, pady=5, bg="#d6d6d6")
+text.pack(side="left")
+button = tk.Button(root, text='Browse', relief=tk.RAISED, bd=2, command=UploadAction)
+button.pack(side="left")
 
 root.mainloop()
-
-# dfs, labels = filter_points_to_draw(points, COMs)
-# main_plot = base_plot(dfs, labels)
-# main_plot = draw_line(main_plot, [COMs['PELVIS'], points['LHM2']], [COMs['TORSO'], points['RHM2']])
-# main_plot = draw_anat_ax(main_plot, axes, COMs)
-# main_plot = draw_vectors(main_plot, vectors)
-
-
-# main_plot.show()
