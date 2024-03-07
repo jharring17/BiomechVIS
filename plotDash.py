@@ -4,7 +4,7 @@ import scipy.io as sio
 import numpy as np
 import pandas as pd
 import sys
-from dash import Dash, dcc, html, Input, Output, State, callback_context
+from dash import Dash, dcc, html, Input, Output, State, callback_context, MATCH, no_update
 import dash_bootstrap_components as dbc
 import plotly.express as px
 import os
@@ -17,7 +17,10 @@ from tkinter import filedialog
 #TODO want a bar for the frame number
 #TODO plot axis
 # note we can use the add trace thing to make it so you can click to show points/groups and lines
-
+global removesTraces
+removedTraces=[]
+global numOf2dGraphs
+numOf2dGraphs= 0
 global filesList
 filesList = {}
 filesList = {'AnatAx' : f'', 'SegCOM': f'', 
@@ -409,7 +412,7 @@ def dash():
                         options=[{"label": point, "value": point} for point in points.keys()],
                         value= list(points.keys())[0],
                         clearable=False,
-                        style={'width': '95%'}
+                        style={'width': '100%', 'margin-right': '4px'}
                     ),
                     dcc.Dropdown(
                         id="xyzDropdown",
@@ -418,12 +421,13 @@ def dash():
                                 {"label": "Z", "value": "Z"}],
                         value="X",
                         clearable=False,
-                        style={'width': '10%'}
-                    )],
-                style={
+                        style={'width': '10%', 'margin-right': '4px'}
+                    ),     
+                    dbc.Input(type="color", id="colorpicker",value="#000000",style={"width": '10%', 'height': '36px'}),
+                    ],style={
                     'display': 'flex',
                     'flex-direction': 'row',
-
+                    'justify-content': 'space-between',
                 }) 
 
             ]),
@@ -439,7 +443,6 @@ def dash():
         ),
         html.Div([ # Div to hold the dropdown stuff and the time series graphs
             html.Div([ #Div for the drop Down stuff
-                html.H4('Interactive Graph Selection for Time Series', style={"margin": '0px', 'margin-top': '5px'}),
                 html.Div([
                     dcc.Upload(
                         id='upload-data',
@@ -460,6 +463,7 @@ def dash():
                         # Allow multiple files to be uploaded
                         multiple=True
                         ),
+                html.H4('Interactive Graph Selection for Time Series', style={"margin": '0px', 'margin-top': '5px'}),
                 ]),
                 html.Div(id='hidden-div', children=[
                     html.P('', id="chainCallback")
@@ -488,7 +492,7 @@ def dash():
                 'display': 'flex',
                 'flex-direction': 'column',
                 'overflow': 'auto',
-                'max-height': '70vh'
+                'max-height': '100vh'
             })
         ],
         style={ # Styling for the Div that holds the Dropdown menu and the Times Series Graph
@@ -619,28 +623,30 @@ def dash():
             return is_open
         
     @app.callback(
-        [Output("normal-graphs-div", "children"),
-            Output("graph-combined", "figure")],
+        [Output("normal-graphs-div", "children", allow_duplicate=True),
+            Output("graph-combined", "figure", allow_duplicate=True)],
         [Input("submit-add-new-modal", "n_clicks")],
         [State("addNewGraphDropdown", "value"),
         State("xyzDropdown", "value"), 
         State("normal-graphs-div", "children"),
-        State("graph-combined", "figure")], prevent_initial_call=True
+        State("graph-combined", "figure"), 
+        State("colorpicker", "value")], prevent_initial_call=True
     )
-    def add_new_graph(submit_clicks, selected_point_key, selected_xyz, current_children, current_combined_figure):
+    def add_new_graph(submit_clicks, selected_point_key, selected_xyz, current_children, current_combined_figure, lineColor):
+        global numOf2dGraphs
         current_combined_figure = go.Figure(current_combined_figure)
 
         selected_point = points[selected_point_key]  
 
         if selected_xyz == "X":
             point = selected_point[:, 0].T
-            lineColor = "red"
+            # lineColor = "red"
         elif selected_xyz == "Y":
             point = selected_point[:, 1].T
-            lineColor = "green"
+            # lineColor = "green"
         elif selected_xyz == "Z":
             point = selected_point[:, 2].T
-            lineColor = "blue"
+            # lineColor = "blue"
 
         time = list(range(len(point)))
 
@@ -648,21 +654,43 @@ def dash():
             current_combined_figure = go.Figure()
 
         if submit_clicks:
+            numOf2dGraphs = numOf2dGraphs + 1     
+
             fig = go.Figure(data=go.Scatter(x=time, y=point, mode='markers+lines', line=dict(color=lineColor)),
                             layout=go.Layout(title=f'Point {selected_point_key} {selected_xyz} over time', xaxis_title='Frame',
                                             yaxis_title=f'{selected_xyz}', height=300))
-
-            current_children.append(html.Div(className='dynamically-added-graph-divs', children=[
+            current_children.append(html.Div(className='dynamically-added-graph-divs', id={'type':'dynamically-added-graph-divs', 'index':f'{numOf2dGraphs}'}, children=[
                                         dcc.Graph(figure=fig),
-                                        # html.Button("Remove Graph",className='remove-graph-button', style={'margin': '10px'})
+                                        html.Button("Remove Graph",className='remove-graph-button', id={'type':'remove-button', 'index': f'{numOf2dGraphs}'}, style={'margin': '10px'})
                                         ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'flex-direction': 'column'})) 
             current_combined_figure.add_trace(go.Scatter(x=time, y=point, mode='markers+lines', line=dict(color=lineColor), name=f"{selected_point_key} {selected_xyz}"))    
-            current_combined_figure.update_layout(title=f'Combined Graph of all data point selected over time',
-                                              xaxis_title='Frame', yaxis_title='Value', height=600)       
+            current_combined_figure.update_layout(title=f'Combined Graph of all data points selected over time',
+                                              xaxis_title='Frame', yaxis_title='Value', height=600)  
             return current_children, current_combined_figure
         
         return current_children, current_combined_figure
 
+    @app.callback(
+        Output({'type':'dynamically-added-graph-divs', 'index': MATCH}, 'children'),
+        [Input({'type': 'remove-button', 'index': MATCH}, 'n_clicks')],
+        [State({'type':'dynamically-added-graph-divs', 'index': MATCH}, 'children'),
+        State('normal-graphs-div', 'children'),
+        State("graph-combined", "figure")],
+        prevent_initial_call=True
+    )
+    def remove_element(n_clicks, child, current_children, current_combined_figure):
+        global removedTraces
+
+        if n_clicks is not None:
+            updated_children = [div for div in current_children if child[1]['props']['id'] == div['props']['id']]
+            current_combined_figure = go.Figure(current_combined_figure)
+            words = child[0]['props']['figure']['layout']['title']['text'].split(' ')
+
+            removedTraces.append(f'{words[1]} {words[2]}')
+        
+            return updated_children
+
+        return current_children
 
     # @app.callback(
     # Output("customizeGraphModal", "is_open"),
@@ -678,16 +706,27 @@ def dash():
     
     #Callback for showing Either three seperate graphs or showing one combined Graph
     @app.callback(
-        [Output('add-new-btn-and-graphs-div', 'style'), Output('combined-graph-div', 'style')],
-        [Input("checkbox_hide", "value")]
+        [Output('add-new-btn-and-graphs-div', 'style'), Output('graph-combined', 'figure'),  Output('combined-graph-div', 'style')],
+        [Input("checkbox_hide", "value")],
+        State("graph-combined", "figure")
     )
-    def update_graph_visibility(checkbox_value):
+    def update_graph_visibility(checkbox_value, current_combined_figure):
+        global removedTraces
         if checkbox_value:
-            # If checkbox is checked, hide graphs
-            return {'display': 'none'}, {'display': 'block'}
+            current_combined_figure = go.Figure(current_combined_figure)
+            new_fig = go.Figure(layout=go.Layout(title=f'Combined Graph of all data point selected over time', xaxis_title='Frame', yaxis_title='Value', height=600))
+            if removedTraces != []:
+                for line in current_combined_figure.data:
+                    if line['name'] not in removedTraces :
+                        new_fig.add_trace(line)
+
+                removedTraces = []
+                current_combined_figure = new_fig
+
+            return {'display': 'none'}, current_combined_figure,{'display': 'block'}
         else:
-            # If checkbox is not checked, show graphs
-            return {'display': 'block'}, {'display': 'none'}
+            current_combined_figure = go.Figure(current_combined_figure)
+            return {'display': 'block'}, current_combined_figure, {'display': 'none'}
     
     @app.callback(
         Output("3dInput", "value"),
@@ -750,6 +789,8 @@ def dash():
             global points, COMs, axes, vectors
             global dfs, labels
             global frameLength
+            global numOf2dGraphs
+            numOf2dGraphs=0
             points, COMs, axes, vectors = read_Mitchell_data(frameRate)
             dfs, labels = filter_points_to_draw(points, COMs)
             frameLength = len(dfs) * frameRate
