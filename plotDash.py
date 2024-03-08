@@ -17,8 +17,6 @@ from tkinter import filedialog
 #TODO want a bar for the frame number
 #TODO plot axis
 # note we can use the add trace thing to make it so you can click to show points/groups and lines
-global removesTraces
-removedTraces=[]
 global numOf2dGraphs
 numOf2dGraphs= 0
 global newGraphNumOfLines
@@ -457,23 +455,13 @@ def dash():
                 html.Div(id='hidden-div', children=[
                     html.P('', id="chainCallback")
                 ], style={'display':'none'}),
-                html.Div([ # Div that hold dropdown and check box
-                    dcc.Checklist(['View Combined Graph'], id='checkbox_hide')
-                ],
-                style={
-                    'display': 'flex',
-                    'flex-direction': 'column'   
-                }) # End of Div that holds dropdown an checkbox
-                
+               
             ]),
             html.Div(id="outer-2d-graph-div", children=[ # Time Series Graphs Div
                 html.Div(id="inner-2d-graph-div", children=[
                     html.Div(id='add-new-btn-and-graphs-div', children=[
                         html.Div(id="normal-graphs-div", children=[]),
                         html.Button("Add New 2D Graph", id="addNew2dGraphBtn")
-                    ]),
-                    html.Div( id = "combined-graph-div", children=[
-                        dcc.Graph(id='graph-combined'),
                     ]),
                 ]),
             ],
@@ -639,6 +627,7 @@ def dash():
         prevent_initial_call=True
     )
     def add_line_options(n_clicks, current_children):
+        global points
         global newGraphNumOfLines
 
         newGraphNumOfLines = newGraphNumOfLines + 1
@@ -673,7 +662,6 @@ def dash():
         
     @app.callback(
         [Output("normal-graphs-div", "children", allow_duplicate=True),
-            Output("graph-combined", "figure", allow_duplicate=True),
             Output('new-graph-title-input', 'value'),
             Output('new-graph-x-axis-input', 'value'),
             Output('new-graph-y-axis-input', 'value'),
@@ -686,12 +674,10 @@ def dash():
         State('new-graph-x-axis-input', 'value'),
         State('new-graph-y-axis-input', 'value'),
         State('new-graph-height-input', 'value'),
-        State("normal-graphs-div", "children"),
-        State("graph-combined", "figure")], prevent_initial_call=True
+        State("normal-graphs-div", "children")], prevent_initial_call=True
     )
-    def add_new_graph(submit_clicks, selected_point_keys, selected_xyzs, lineColors, title, x_axis, y_axis, height, current_children, current_combined_figure):
+    def add_new_graph(submit_clicks, selected_point_keys, selected_xyzs, lineColors, title, x_axis, y_axis, height, current_children):
         global numOf2dGraphs
-        current_combined_figure = go.Figure(current_combined_figure)
         fig = go.Figure()
 
         if title is None: title = "My New 2D Graph"
@@ -714,17 +700,10 @@ def dash():
             elif selected_xyz == "Z":
                 point = selected_point[:, 2].T
 
-            time = list(range(len(point)))
-
-            if current_combined_figure is None:
-                current_combined_figure = go.Figure()    
+            time = list(range(len(point))) 
 
             fig.add_trace(go.Scatter(x=time, y=point, mode='markers+lines', line=dict(color=lineColor), name=f"{selected_point_key} {selected_xyz}"))
             
-        
-            current_combined_figure.add_trace(go.Scatter(x=time, y=point, mode='markers+lines', line=dict(color=lineColor), name=f"{selected_point_key} {selected_xyz}"))    
-            current_combined_figure.update_layout(title=f'Combined Graph of all data points selected over time',
-                                            xaxis_title='Frame', yaxis_title='Value', height=600) 
 
         fig.update_layout(title=title, xaxis_title=x_axis,
                                             yaxis_title=y_axis, height=height)
@@ -739,26 +718,21 @@ def dash():
                                         ]),
                                         ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'flex-direction': 'column'})) 
              
-        return current_children, current_combined_figure, None, None, None, 300
+        return current_children, None, None, None, 300
         
     @app.callback(
         Output({'type':'dynamically-added-graph-divs', 'index': MATCH}, 'children'),
         [Input({'type': 'remove-button', 'index': MATCH}, 'n_clicks')],
         [State({'type':'dynamically-added-graph-divs', 'index': MATCH}, 'children'),
-        State('normal-graphs-div', 'children'),
-        State("graph-combined", "figure")],
+        State('normal-graphs-div', 'children')],
         prevent_initial_call=True
     )
-    def remove_element(n_clicks, child, current_children, current_combined_figure):
+    def remove_element(n_clicks, child, current_children):
         global removedTraces
 
         if n_clicks is not None:
             updated_children = [div for div in current_children if child[1]['props']['id'] == div['props']['id']]
-            current_combined_figure = go.Figure(current_combined_figure)
-            words = child[0]['props']['figure']['layout']['title']['text'].split(' ')
-
-            removedTraces.append(f'{words[1]} {words[2]}')
-        
+       
             return updated_children
 
         return current_children
@@ -771,32 +745,7 @@ def dash():
     )
     def remove_new_lines_add_new_graph(n_clicks, current_children):
         return []
-
-    
-    #Callback for showing Either three seperate graphs or showing one combined Graph
-    @app.callback(
-        [Output('add-new-btn-and-graphs-div', 'style'), Output('graph-combined', 'figure'),  Output('combined-graph-div', 'style')],
-        [Input("checkbox_hide", "value")],
-        State("graph-combined", "figure")
-    )
-    def update_graph_visibility(checkbox_value, current_combined_figure):
-        global removedTraces
-        if checkbox_value:
-            current_combined_figure = go.Figure(current_combined_figure)
-            new_fig = go.Figure(layout=go.Layout(title=f'Combined Graph of all data point selected over time', xaxis_title='Frame', yaxis_title='Value', height=600))
-            if removedTraces != []:
-                for line in current_combined_figure.data:
-                    if line['name'] not in removedTraces :
-                        new_fig.add_trace(line)
-
-                removedTraces = []
-                current_combined_figure = new_fig
-
-            return {'display': 'none'}, current_combined_figure,{'display': 'block'}
-        else:
-            current_combined_figure = go.Figure(current_combined_figure)
-            return {'display': 'block'}, current_combined_figure, {'display': 'none'}
-    
+  
     @app.callback(
         Output("3dInput", "value"),
         Output("3dInputSlider", "value"),
@@ -829,11 +778,10 @@ def dash():
         return div
     
     @app.callback(
-        Output({"type": "new-graph-point-dropdown", "index": ALL}, "value"),
-        Output({"type": "new-graph-xyz-dropdown", "index": ALL}, "value"),
+        Output({"type": "new-graph-point-dropdown", "index": '1'}, "value"),
+        Output({"type": "new-graph-point-dropdown", "index": '1'}, "options"),
         Output('chainCallback', 'children'),
         Output("normal-graphs-div", 'children'),
-        Output('graph-combined', 'figure', allow_duplicate=True),
         Input('upload-data', 'contents'),
         State('upload-data', 'filename'),
         State('upload-data', 'last_modified'),
@@ -865,9 +813,7 @@ def dash():
             points, COMs, axes, vectors = read_Mitchell_data(frameRate)
             dfs, labels = filter_points_to_draw(points, COMs)
             frameLength = len(dfs) * frameRate
-            removedTraces = []
-            return list(points.keys())[0], list(points.keys()), frameLength, [], go.Figure(layout=go.Layout(title=f'Combined Graph of all data point selected over time', xaxis_title='Frame', yaxis_title='Value', height=600))
-
+            return list(points.keys())[0], list(points.keys()), frameLength, [] 
 
     #When giving code, set debug to False to make only one tkinter run needed
     app.run_server(debug=True)
