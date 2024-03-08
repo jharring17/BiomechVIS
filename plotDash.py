@@ -4,7 +4,7 @@ import scipy.io as sio
 import numpy as np
 import pandas as pd
 import sys
-from dash import Dash, dcc, html, Input, Output, State, callback_context, MATCH, no_update
+from dash import Dash, dcc, html, Input, Output, State, callback_context, MATCH, no_update, ALL
 import dash_bootstrap_components as dbc
 import plotly.express as px
 import os
@@ -21,6 +21,8 @@ global removesTraces
 removedTraces=[]
 global numOf2dGraphs
 numOf2dGraphs= 0
+global newGraphNumOfLines
+newGraphNumOfLines=1
 global filesList
 filesList = {}
 filesList = {'AnatAx' : f'', 'SegCOM': f'', 
@@ -297,35 +299,6 @@ def draw_line(plot, froms, tos, startingFrame, cs='red', name='lines'):
 
     return plot
 
-# def draw_timeseries(point, point_name=''):
-#     '''Shows x, y and z timeseries for a given point'''
-#     x = point[:,0].T
-#     y = point[:,1].T
-#     z = point[:,2].T
-#     time = list(range(len(z)))
-
-#     fig_x = go.Figure(data=go.Scatter(x=time, y=x, mode='markers+lines', line=dict(color='red')), layout=go.Layout(title=f'Point {point_name} X over time', xaxis_title='Frame', yaxis_title='X'))
-#     fig_y = go.Figure(data=go.Scatter(x=time, y=y, mode='markers+lines', line=dict(color='green')), layout=go.Layout(title=f'Point {point_name} Y over time', xaxis_title='Frame', yaxis_title='Y'))
-#     fig_z = go.Figure(data=go.Scatter(x=time, y=z, mode='markers+lines', line=dict(color='blue')), layout=go.Layout(title=f'Point {point_name} Z over time', xaxis_title='Frame', yaxis_title='Z'))
-
-#     fig_x.update_layout(
-#         height=300,
-#     )
-#     fig_y.update_layout(
-#         height=300,  
-#     )
-#     fig_z.update_layout(
-#         height=300,
-#     )
-
-#     fig_combined = go.Figure(data=[
-#         go.Scatter(x=time, y=x, mode='markers+lines', name='X', line=dict(color='red')),
-#         go.Scatter(x=time, y=y, mode='markers+lines', name='Y', line=dict(color='green')),
-#         go.Scatter(x=time, y=z, mode='markers+lines', name='Z', line=dict(color='blue'))
-#     ], layout=go.Layout(title=f'Combined Graph for {point_name}', xaxis_title='Frame', yaxis_title='Value'))
-
-#     return [fig_x, fig_y, fig_z, fig_combined]
-
 def detect_filetype(filename):
     loaded = sio.loadmat(filename)
     if (loaded):
@@ -403,35 +376,51 @@ def dash():
             ], backdrop="static",
     ),
     dbc.Modal(id = "newGraphModal", children=[
-            dbc.ModalHeader("Add New 2D Graph"),
-            dbc.ModalBody([
+            dbc.ModalHeader("Add New 2D Graph", id='new-graph-modal-header'),
+            dbc.ModalBody(id='new-graph-modal-body', children=[
+                html.Div(id='new-graph-attributes-div', children=[
+                    html.H5("Graph Attributes:"),
+                    html.Div(id='new-graph-attributes-inputs-div', children=[
+                        html.H6("Title:"), 
+                        dcc.Input(id='new-graph-title-input', type='text', placeholder='My New 2D Graph'),
+                        html.H6("X-Axis Title:"), 
+                        dcc.Input(id='new-graph-x-axis-input', type='text', placeholder='X'),
+                        html.H6("Y-Axis Title:"), 
+                        dcc.Input(id='new-graph-y-axis-input', type='text', placeholder='Y'),
+                        html.H6("Height:"), 
+                        dcc.Input(id="new-graph-height-input", type="number", placeholder=300, value=300, min=200, max=1000, debounce=True, style={"height": "20px", "margin-left": "5px"})
+                    ]),
+                ]),
                 html.H5("Select the data you would like to graph:"),
-                html.Div([ # Div that hold dropdown
-                    dcc.Dropdown(
-                        id="addNewGraphDropdown",
-                        options=[{"label": point, "value": point} for point in points.keys()],
-                        value= list(points.keys())[0],
-                        clearable=False,
-                        style={'width': '100%', 'margin-right': '4px'}
-                    ),
-                    dcc.Dropdown(
-                        id="xyzDropdown",
-                        options=[{"label": "X", "value": "X"},
-                                {"label": "Y", "value": "Y"},
-                                {"label": "Z", "value": "Z"}],
-                        value="X",
-                        clearable=False,
-                        style={'width': '10%', 'margin-right': '4px'}
-                    ),     
-                    dbc.Input(type="color", id="colorpicker",value="#000000",style={"width": '10%', 'height': '36px'}),
-                    ],style={
-                    'display': 'flex',
-                    'flex-direction': 'row',
-                    'justify-content': 'space-between',
-                }) 
+                html.Div(id='new-graph-add-line-dropdowns-div', children = [ # Div that hold dropdown
+                    html.Div(id='new-graph-line-1-title', children=[
+                        html.H6("Line:", id='new-graph-modal-line-1-text'),
+                    ]),
+                    html.Div(id='new-graph-line-1-inputs',className='new-graph-line-inputs', children=[ 
+                        dcc.Dropdown(
+                            id={'type': 'new-graph-point-dropdown', 'index': f'{newGraphNumOfLines}'},
+                            options=[{"label": point, "value": point} for point in points.keys()],
+                            value= list(points.keys())[0],
+                            clearable=False,
+                            style={'width': '100%', 'margin-right': '4px'}
+                        ),
+                        dcc.Dropdown(
+                            id={'type': 'new-graph-xyz-dropdown', 'index': f'{newGraphNumOfLines}'},
+                            options=[{"label": "X", "value": "X"},
+                                    {"label": "Y", "value": "Y"},
+                                    {"label": "Z", "value": "Z"}],
+                            value="X",
+                            clearable=False,
+                            style={'width': '10%', 'margin-right': '4px'}
+                        ),     
+                        dbc.Input(type="color", id={'type': 'new-graph-color-picker', 'index': f'{newGraphNumOfLines}'},value="#000000",style={"width": '10%', 'height': '36px'}),
+                        dbc.Button("Remove", id='new-graph-original-remove-button', className='new-graph-remove-line-button')
+                    ]),
+                    ]),
+                html.Div(id='new-graph-add-another-line-button-div', children=[dbc.Button("Add Another Line", id='new-graph-add-another-line-button')]) 
 
             ]),
-            dbc.ModalFooter([dbc.Button("Cancel", id="cancel-add-new-modal", className="ml-auto", style={'background': '#ededed', 'color': 'black', 'border-color': 'black'}),
+            dbc.ModalFooter(id='new-graph-modal-footer', children=[dbc.Button("Cancel", id="cancel-add-new-modal", className="ml-auto", style={'background': '#ededed', 'color': 'black', 'border-color': 'black'}),
                              dbc.Button("Submit", id="submit-add-new-modal", className="ml-auto", style={'border-color': 'black'})]),
             ], backdrop="static",
     ),
@@ -601,75 +590,157 @@ def dash():
         main_plot = draw_vectors(main_plot, vectors, startingFrame // framerate)
         return main_plot
 
-
-    # @app.callback(
-    #     Output("inner-2d-graph-div", "children"),
-    #     [Input("addNew2dGraphBtn", "n_clicks")],
-    #     [State("inner-2d-graph-div", "children")], prevent_initial_call=True
-    # )
-    # def add_graph(n_clicks, current_children):
-
     @app.callback(
     Output("newGraphModal", "is_open"),
+    Output('new-graph-add-line-dropdowns-div', 'children'),
     [Input("addNew2dGraphBtn", "n_clicks"),
     Input("cancel-add-new-modal", "n_clicks"),
     Input("submit-add-new-modal", "n_clicks")],
-    [State("newGraphModal", "is_open")]
+    [State("newGraphModal", "is_open"), State('new-graph-add-line-dropdowns-div', "children")]
     )   
-    def toggle_add_new_modal(n_clicks_open, n_clicks_close, n_clicks_submit, is_open):
+    def toggle_add_new_modal(n_clicks_open, n_clicks_close, n_clicks_submit, is_open, current_children):
+        global newGraphNumOfLines
         if n_clicks_open or n_clicks_close or n_clicks_submit:
-            return not is_open
+            if newGraphNumOfLines != 1:
+                newGraphNumOfLines = 1
+                new_children = [html.Div([
+                html.Div(id='new-graph-line-1-title', children=[
+                html.H6("Line:", id='new-graph-modal-line-1-text'),
+                ]),
+                html.Div(id='new-graph-line-1-inputs',className='new-graph-line-inputs', children=[ 
+                    dcc.Dropdown(
+                        id={'type': "new-graph-point-dropdown", 'index': f'{newGraphNumOfLines}'},
+                        options=[{"label": point, "value": point} for point in points.keys()],
+                        value= list(points.keys())[0],
+                        clearable=False,
+                        style={'width': '100%', 'margin-right': '4px'}
+                    ),
+                    dcc.Dropdown(
+                        id={'type': 'new-graph-xyz-dropdown', 'index': f'{newGraphNumOfLines}'},
+                        options=[{"label": "X", "value": "X"},
+                                {"label": "Y", "value": "Y"},
+                                {"label": "Z", "value": "Z"}],
+                        value="X",
+                        clearable=False,
+                        style={'width': '10%', 'margin-right': '4px'}
+                    ), dbc.Input(type="color", id={'type': 'new-graph-color-picker', 'index': f'{newGraphNumOfLines}'},value="#000000",style={"width": '10%', 'height': '36px'}),
+                    dbc.Button("Remove", id='new-graph-original-remove-button', className='new-graph-remove-line-button')])])]
+                
+                return not is_open, new_children
+            else:
+                return not is_open, current_children        
         else:
-            return is_open
+            return is_open, current_children
+        
+    @app.callback(
+        Output('new-graph-add-line-dropdowns-div', 'children', allow_duplicate=True),
+        Input('new-graph-add-another-line-button', 'n_clicks'),
+        State('new-graph-add-line-dropdowns-div', "children"),
+        prevent_initial_call=True
+    )
+    def add_line_options(n_clicks, current_children):
+        global newGraphNumOfLines
+
+        newGraphNumOfLines = newGraphNumOfLines + 1
+
+        current_children.append(html.Div(id={'type': 'new-graph-dynamically-added-inputs-div', 'index': f'{newGraphNumOfLines}'}, children=[
+            html.Div(id=f'new-graph-line-{newGraphNumOfLines}-title', children=[
+                        html.H6(f"Line:", id=f'new-graph-modal-line-{newGraphNumOfLines}-text'),
+                    ]),
+                    html.Div(id={'type': 'new-graph-dynamic-inputs-div', 'index': f'{newGraphNumOfLines}'},className='new-graph-line-inputs', children=[ 
+                        dcc.Dropdown(
+                            id={'type': 'new-graph-point-dropdown', 'index': f'{newGraphNumOfLines}'},
+                            options=[{"label": point, "value": point} for point in points.keys()],
+                            value= list(points.keys())[0],
+                            clearable=False,
+                            style={'width': '100%', 'margin-right': '4px'}
+                        ),
+                        dcc.Dropdown(
+                            id={'type': 'new-graph-xyz-dropdown', 'index': f'{newGraphNumOfLines}'},
+                            options=[{"label": "X", "value": "X"},
+                                    {"label": "Y", "value": "Y"},
+                                    {"label": "Z", "value": "Z"}],
+                            value="X",
+                            clearable=False,
+                            style={'width': '10%', 'margin-right': '4px'}
+                        ),     
+                        dbc.Input(type="color", id={'type': 'new-graph-color-picker', 'index': f'{newGraphNumOfLines}'},value="#000000",style={"width": '10%', 'height': '36px'}),
+                        dbc.Button("Remove", id={'type': 'new-graph-remove-line', 'index':f'{newGraphNumOfLines}'}, className='new-graph-remove-line-button'),
+                    ])]))
+
+
+        return current_children
         
     @app.callback(
         [Output("normal-graphs-div", "children", allow_duplicate=True),
-            Output("graph-combined", "figure", allow_duplicate=True)],
+            Output("graph-combined", "figure", allow_duplicate=True),
+            Output('new-graph-title-input', 'value'),
+            Output('new-graph-x-axis-input', 'value'),
+            Output('new-graph-y-axis-input', 'value'),
+            Output('new-graph-height-input', 'value')],
         [Input("submit-add-new-modal", "n_clicks")],
-        [State("addNewGraphDropdown", "value"),
-        State("xyzDropdown", "value"), 
+        [State({"type": "new-graph-point-dropdown", "index": ALL}, "value"),
+        State({"type": "new-graph-xyz-dropdown", "index": ALL}, "value"),
+        State({"type": "new-graph-color-picker", "index": ALL}, "value"),
+        State('new-graph-title-input', 'value'),
+        State('new-graph-x-axis-input', 'value'),
+        State('new-graph-y-axis-input', 'value'),
+        State('new-graph-height-input', 'value'),
         State("normal-graphs-div", "children"),
-        State("graph-combined", "figure"), 
-        State("colorpicker", "value")], prevent_initial_call=True
+        State("graph-combined", "figure")], prevent_initial_call=True
     )
-    def add_new_graph(submit_clicks, selected_point_key, selected_xyz, current_children, current_combined_figure, lineColor):
+    def add_new_graph(submit_clicks, selected_point_keys, selected_xyzs, lineColors, title, x_axis, y_axis, height, current_children, current_combined_figure):
         global numOf2dGraphs
         current_combined_figure = go.Figure(current_combined_figure)
+        fig = go.Figure()
 
-        selected_point = points[selected_point_key]  
+        if title is None: title = "My New 2D Graph"
+        if x_axis is None: x_axis = "X"
+        if y_axis is None: y_axis = "Y"
+        if height is None: height = 300
 
-        if selected_xyz == "X":
-            point = selected_point[:, 0].T
-            # lineColor = "red"
-        elif selected_xyz == "Y":
-            point = selected_point[:, 1].T
-            # lineColor = "green"
-        elif selected_xyz == "Z":
-            point = selected_point[:, 2].T
-            # lineColor = "blue"
+        for i in range(len(selected_point_keys)):
+            selected_point_key = selected_point_keys[i]
+            selected_xyz = selected_xyzs[i]
+            lineColor = lineColors[i]
 
-        time = list(range(len(point)))
+            selected_point = points[selected_point_key]  
 
-        if current_combined_figure is None:
-            current_combined_figure = go.Figure()
 
-        if submit_clicks:
-            numOf2dGraphs = numOf2dGraphs + 1     
+            if selected_xyz == "X":
+                point = selected_point[:, 0].T
+            elif selected_xyz == "Y":
+                point = selected_point[:, 1].T
+            elif selected_xyz == "Z":
+                point = selected_point[:, 2].T
 
-            fig = go.Figure(data=go.Scatter(x=time, y=point, mode='markers+lines', line=dict(color=lineColor)),
-                            layout=go.Layout(title=f'Point {selected_point_key} {selected_xyz} over time', xaxis_title='Frame',
-                                            yaxis_title=f'{selected_xyz}', height=300))
-            current_children.append(html.Div(className='dynamically-added-graph-divs', id={'type':'dynamically-added-graph-divs', 'index':f'{numOf2dGraphs}'}, children=[
-                                        dcc.Graph(figure=fig),
-                                        html.Button("Remove Graph",className='remove-graph-button', id={'type':'remove-button', 'index': f'{numOf2dGraphs}'}, style={'margin': '10px'})
-                                        ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'flex-direction': 'column'})) 
+            time = list(range(len(point)))
+
+            if current_combined_figure is None:
+                current_combined_figure = go.Figure()    
+
+            fig.add_trace(go.Scatter(x=time, y=point, mode='markers+lines', line=dict(color=lineColor), name=f"{selected_point_key} {selected_xyz}"))
+            
+        
             current_combined_figure.add_trace(go.Scatter(x=time, y=point, mode='markers+lines', line=dict(color=lineColor), name=f"{selected_point_key} {selected_xyz}"))    
             current_combined_figure.update_layout(title=f'Combined Graph of all data points selected over time',
-                                              xaxis_title='Frame', yaxis_title='Value', height=600)  
-            return current_children, current_combined_figure
-        
-        return current_children, current_combined_figure
+                                            xaxis_title='Frame', yaxis_title='Value', height=600) 
 
+        fig.update_layout(title=title, xaxis_title=x_axis,
+                                            yaxis_title=y_axis, height=height)
+
+        if submit_clicks:
+            numOf2dGraphs = numOf2dGraphs + 1 
+            current_children.append(html.Div(className='dynamically-added-graph-divs', id={'type':'dynamically-added-graph-divs', 'index':f'{numOf2dGraphs}'}, children=[
+                                        dcc.Graph(figure=fig),
+                                        html.Div(className='dynaimically-add-button-div', id={'type': 'button-div', 'index':f'{numOf2dGraphs}'}, children=[
+                                            html.Button("Customize Graph", className='customize-graph-button', id={'type': 'customize-button', 'index':f'{numOf2dGraphs}'}, style={'margin':'10px'}),
+                                            html.Button("Remove Graph",className='remove-graph-button', id={'type':'remove-button', 'index': f'{numOf2dGraphs}'}, style={'margin': '10px'})
+                                        ]),
+                                        ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'flex-direction': 'column'})) 
+             
+        return current_children, current_combined_figure, None, None, None, 300
+        
     @app.callback(
         Output({'type':'dynamically-added-graph-divs', 'index': MATCH}, 'children'),
         [Input({'type': 'remove-button', 'index': MATCH}, 'n_clicks')],
@@ -692,17 +763,15 @@ def dash():
 
         return current_children
 
-    # @app.callback(
-    # Output("customizeGraphModal", "is_open"),
-    # [Input("customize2dGraph-1", "n_clicks"),
-    #  Input("close-customize-modal", "n_clicks")],
-    # [State("customizeGraphModal", "is_open")]
-    # )
-    # def toggle_customize_modal(n_clicks_open, n_clicks_close, is_open):
-    #     if n_clicks_open or n_clicks_close:
-    #         return not is_open
-    #     else:
-    #         return is_open
+    @app.callback(
+            Output({'type': 'new-graph-dynamically-added-inputs-div', 'index': MATCH}, 'children'),
+            Input({'type': 'new-graph-remove-line', 'index':MATCH}, 'n_clicks'),
+            State({'type': 'new-graph-dynamically-added-inputs-div', 'index': MATCH}, 'children'),
+            prevent_initial_call=True
+    )
+    def remove_new_lines_add_new_graph(n_clicks, current_children):
+        return []
+
     
     #Callback for showing Either three seperate graphs or showing one combined Graph
     @app.callback(
@@ -760,16 +829,18 @@ def dash():
         return div
     
     @app.callback(
-        Output('addNewGraphDropdown', 'value'),
-        Output('addNewGraphDropdown', 'options'),
+        Output({"type": "new-graph-point-dropdown", "index": ALL}, "value"),
+        Output({"type": "new-graph-xyz-dropdown", "index": ALL}, "value"),
         Output('chainCallback', 'children'),
+        Output("normal-graphs-div", 'children'),
+        Output('graph-combined', 'figure', allow_duplicate=True),
         Input('upload-data', 'contents'),
         State('upload-data', 'filename'),
         State('upload-data', 'last_modified'),
         prevent_initial_call=True)
     def update_output(list_of_contents, list_of_names, list_of_dates):
         if list_of_contents is not None:
-            global filesList
+            global filesList, removedTraces
             #https://stackoverflow.com/questions/1124810/how-can-i-find-path-to-given-file
             for filename in list_of_names:
                 for root, dirs, files in os.walk(os.getcwd()):
@@ -794,8 +865,8 @@ def dash():
             points, COMs, axes, vectors = read_Mitchell_data(frameRate)
             dfs, labels = filter_points_to_draw(points, COMs)
             frameLength = len(dfs) * frameRate
-            allLineGraphed ={}
-            return list(points.keys())[0], list(points.keys()), frameLength
+            removedTraces = []
+            return list(points.keys())[0], list(points.keys()), frameLength, [], go.Figure(layout=go.Layout(title=f'Combined Graph of all data point selected over time', xaxis_title='Frame', yaxis_title='Value', height=600))
 
 
     #When giving code, set debug to False to make only one tkinter run needed
