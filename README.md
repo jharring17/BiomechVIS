@@ -10,16 +10,10 @@ Within the research space, there are few tools that can be leveraged by labs for
 
 ## Installation
 
-Installation can be performed with the bash script in the project. To run the script, enter the project directory execute the following command in terminal:
+Installation can be performed with the through the requirements.txt file included in the project. Install dependencies with the following command in terminal:
 
 ```bash
-./dependencies.sh
-```
-
-Note: If the script requires permission changes to make it executable, run the following command in terminal:
-
-```bash
-chmod +x dependencies.sh
+pip install -r requirements.txt
 ```
 
 ## Usage
