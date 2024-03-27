@@ -7,7 +7,6 @@ Within the research space, there are few tools that can be leveraged by labs for
 -   [Installation](#installation)
 -   [Usage](#usage)
 -   [Contributing](#contributing)
--   [License](#license)
 
 ## Installation
 
