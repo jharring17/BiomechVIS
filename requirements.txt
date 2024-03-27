@@ -1,11 +1,6 @@
-plotly.express
-plotly.graph_objects
-scipy.io
+plotly
+scipy
 numpy
 pandas
-sys
 dash
 dash_bootstrap_components
-plotly.express
-os
-tkinter
