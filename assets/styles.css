@@ -60,8 +60,8 @@ body, html {
     justify-content: center;
 }
 #new-graph-add-another-line-button{
-    background-color: rgb(0, 127, 173);
-    border-color: black;
+    background-color: rgb(108, 108, 108);
+    border: 2px dashed black;
     color: rgb(255, 255, 255);
     width: 95%;
     padding: 10px;
@@ -73,11 +73,12 @@ body, html {
     flex-direction: column;
 }
 
-.new-graph-line-inputs{
+.new-graph-line-inputs, #new-graph-x-axis-dropdown-div{
     display: flex;
     flex-direction: row;
     margin-bottom: 3px;
 }
+
 
 #new-graph-attributes-div{
     display: flex;
@@ -98,13 +99,33 @@ body, html {
 }   
 
 .new-graph-remove-line-button{
-    background-color: rgb(0, 127, 173);
+    background-color: rgb(108, 108, 108);
+    border: 1px solid black;
     margin-left: 6px;
     height: 36px;
     padding: 5px;
     font-size: 13px;
 }
-
+#new-graph-add-another-line-button:hover, 
+.new-graph-remove-line-button:hover, 
+#new-graph-add-another-line-button:active, 
+.new-graph-remove-line-button:active{
+    background-color:  rgb(72, 72, 72); ;
+}
 #new-graph-original-remove-button{
     display: none;
+}
+
+p{
+    margin: 0px;
+    font-size: 10px;
+    margin-bottom: 12px;
+}
+
+#new-graph-x-axis-title{
+    margin-bottom: 0px;
+}
+
+#x-axis-xyz-dropdown{
+    width: 10%;
 }

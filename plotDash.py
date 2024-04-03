@@ -17,7 +17,7 @@ from tkinter import filedialog
 #TODO want a bar for the frame number
 #TODO plot axis
 # note we can use the add trace thing to make it so you can click to show points/groups and lines
-global numOf2dGraphs
+global numOf2dGraphs, points_for_2D_graphs
 numOf2dGraphs= 0
 global newGraphNumOfLines
 newGraphNumOfLines=1
@@ -115,7 +115,7 @@ def read_Mitchell_data(framerate):
     for ax, temp in axes.items():
         undersampled_axes[ax] = {coord: data[::framerate] for coord, data in temp.items()}
 
-    return undersampled_final_points, undersampled_COMs, undersampled_axes, undersampled_vectors
+    return undersampled_final_points, undersampled_COMs, undersampled_axes, undersampled_vectors, final_points
 
 def filter_points_to_draw(points, COMs, p_filter=[]):
     '''Takes in all points and filters out those in the filter
@@ -335,10 +335,10 @@ def UploadAction(event=None):
         if "mocap" in filename.casefold():
             filesList['MocapData'] = filename
 
-    global points, COMs, axes, vectors
+    global points, COMs, axes, vectors, points_for_2D_graphs
     global dfs, labels
     global frameLength
-    points, COMs, axes, vectors = read_Mitchell_data(frameRate)
+    points, COMs, axes, vectors, points_for_2D_graphs = read_Mitchell_data(frameRate)
     dfs, labels = filter_points_to_draw(points, COMs)
     frameLength = len(dfs) * frameRate
     root.destroy()
@@ -366,13 +366,13 @@ def dash():
 
         }
     ),
-    
+    # Start of the Cutomize Graph Modal
     dbc.Modal(id = "customizeGraphModal", children=[
             dbc.ModalHeader("2D Graph Customizer"),
             dbc.ModalBody("This is a basic modal. You can add any content here."),
             dbc.ModalFooter(dbc.Button("Close", id="close-customize-modal", className="ml-auto")),
             ], backdrop="static",
-    ),
+    ), # Start of the New Graph Modal
     dbc.Modal(id = "newGraphModal", children=[
             dbc.ModalHeader("Add New 2D Graph", id='new-graph-modal-header'),
             dbc.ModalBody(id='new-graph-modal-body', children=[
@@ -389,7 +389,7 @@ def dash():
                         dcc.Input(id="new-graph-height-input", type="number", placeholder=300, value=300, min=200, max=1000, debounce=True, style={"height": "20px", "margin-left": "5px"})
                     ]),
                 ]),
-                html.H5("Select the data you would like to graph:"),
+                html.H5("Select the data for the Y-Axis:"),
                 html.Div(id='new-graph-add-line-dropdowns-div', children = [ # Div that hold dropdown
                     html.Div(id='new-graph-line-1-title', children=[
                         html.H6("Line:", id='new-graph-modal-line-1-text'),
@@ -415,13 +415,32 @@ def dash():
                         dbc.Button("Remove", id='new-graph-original-remove-button', className='new-graph-remove-line-button')
                     ]),
                     ]),
-                html.Div(id='new-graph-add-another-line-button-div', children=[dbc.Button("Add Another Line", id='new-graph-add-another-line-button')]) 
-
+                html.Div(id='new-graph-add-another-line-button-div', children=[dbc.Button("Add Another Line", id='new-graph-add-another-line-button')]),
+                html.H5("Select the data for the X-Axis:", id="new-graph-x-axis-title"),
+                html.P("(Default will be frames)"),
+                html.Div(id="new-graph-x-axis-dropdown-div", children= [
+                        dcc.Dropdown(
+                            id="x-axis-point-dropdown",
+                            options=[{"label": "Frames", "value": "frames"}] + [{"label": point, "value": point} for point in points.keys()],
+                            value= "frames",
+                            clearable=False,
+                            style={'width': '100%', 'margin-right': '4px'}
+                        ),
+                        dcc.Dropdown(
+                            id="x-axis-xyz-dropdown",
+                            options=[{"label": "X", "value": "X"},
+                                    {"label": "Y", "value": "Y"},
+                                    {"label": "Z", "value": "Z"}],
+                            value="X",
+                            clearable=False,
+                            style={'width': '10%', 'margin-right': '4px', 'display': 'none'}
+                        ),                             
+                ]),
             ]),
             dbc.ModalFooter(id='new-graph-modal-footer', children=[dbc.Button("Cancel", id="cancel-add-new-modal", className="ml-auto", style={'background': '#ededed', 'color': 'black', 'border-color': 'black'}),
                              dbc.Button("Submit", id="submit-add-new-modal", className="ml-auto", style={'border-color': 'black'})]),
             ], backdrop="static",
-    ),
+    ), # End of the New Graph Modal
     html.Div([ # Start of the Div that holds EVERYTHING
         dcc.Location(
             id="url",
@@ -570,7 +589,7 @@ def dash():
     def draw_3d_graph(startingFrame, framerate, filecontents):
         global points, COMs, axes, vectors
         global dfs, labels
-        points, COMs, axes, vectors = read_Mitchell_data(framerate)
+        points, COMs, axes, vectors, points_for_2D_graphs = read_Mitchell_data(framerate)
         dfs, labels = filter_points_to_draw(points, COMs)
         main_plot = base_plot(dfs, labels, startingFrame // framerate)
         main_plot = draw_line(main_plot, [COMs[list(COMs.keys())[0]], points[list(points.keys())[0]]], [COMs[list(COMs.keys())[1]], points[list(points.keys())[1]]], startingFrame // framerate)
@@ -581,10 +600,12 @@ def dash():
     @app.callback(
     Output("newGraphModal", "is_open"),
     Output('new-graph-add-line-dropdowns-div', 'children'),
+    Output('x-axis-point-dropdown', 'value', allow_duplicate=True),
+    Output('x-axis-xyz-dropdown', 'value', allow_duplicate=True),
     [Input("addNew2dGraphBtn", "n_clicks"),
     Input("cancel-add-new-modal", "n_clicks"),
     Input("submit-add-new-modal", "n_clicks")],
-    [State("newGraphModal", "is_open"), State('new-graph-add-line-dropdowns-div', "children")]
+    [State("newGraphModal", "is_open"), State('new-graph-add-line-dropdowns-div', "children")], prevent_initial_call=True
     )   
     def toggle_add_new_modal(n_clicks_open, n_clicks_close, n_clicks_submit, is_open, current_children):
         global newGraphNumOfLines
@@ -614,11 +635,11 @@ def dash():
                     ), dbc.Input(type="color", id={'type': 'new-graph-color-picker', 'index': f'{newGraphNumOfLines}'},value="#000000",style={"width": '10%', 'height': '36px'}),
                     dbc.Button("Remove", id='new-graph-original-remove-button', className='new-graph-remove-line-button')])])]
                 
-                return not is_open, new_children
+                return not is_open, new_children, 'frames', 'X'
             else:
-                return not is_open, current_children        
+                return not is_open, current_children, 'frames', 'X'        
         else:
-            return is_open, current_children
+            return is_open, current_children, 'frames', 'X'
         
     @app.callback(
         Output('new-graph-add-line-dropdowns-div', 'children', allow_duplicate=True),
@@ -665,19 +686,24 @@ def dash():
             Output('new-graph-title-input', 'value'),
             Output('new-graph-x-axis-input', 'value'),
             Output('new-graph-y-axis-input', 'value'),
-            Output('new-graph-height-input', 'value')],
+            Output('new-graph-height-input', 'value'),
+            Output('x-axis-point-dropdown', 'value'),
+            Output('x-axis-xyz-dropdown', 'value'),],
         [Input("submit-add-new-modal", "n_clicks")],
         [State({"type": "new-graph-point-dropdown", "index": ALL}, "value"),
         State({"type": "new-graph-xyz-dropdown", "index": ALL}, "value"),
         State({"type": "new-graph-color-picker", "index": ALL}, "value"),
+        State('x-axis-point-dropdown', 'value'),
+        State('x-axis-xyz-dropdown', 'value'),
         State('new-graph-title-input', 'value'),
         State('new-graph-x-axis-input', 'value'),
         State('new-graph-y-axis-input', 'value'),
         State('new-graph-height-input', 'value'),
         State("normal-graphs-div", "children")], prevent_initial_call=True
     )
-    def add_new_graph(submit_clicks, selected_point_keys, selected_xyzs, lineColors, title, x_axis, y_axis, height, current_children):
+    def add_new_graph(submit_clicks, selected_point_keys, selected_xyzs, lineColors, x_axis_point, x_axis_xyz, title, x_axis, y_axis, height, current_children):
         global numOf2dGraphs
+        global points_for_2D_graphs
         fig = go.Figure()
 
         if title is None: title = "My New 2D Graph"
@@ -690,7 +716,7 @@ def dash():
             selected_xyz = selected_xyzs[i]
             lineColor = lineColors[i]
 
-            selected_point = points[selected_point_key]  
+            selected_point = points_for_2D_graphs[selected_point_key]  
 
 
             if selected_xyz == "X":
@@ -700,11 +726,20 @@ def dash():
             elif selected_xyz == "Z":
                 point = selected_point[:, 2].T
 
-            time = list(range(len(point))) 
+            if(i==0):
+                if(x_axis_point == "frames"):
+                    x_axis_point = list(range(len(point)))
+                else:
+                    x_axis_point = points_for_2D_graphs[x_axis_point]
+                    if x_axis_xyz == "X":
+                        x_axis_point = x_axis_point[:, 0].T
+                    elif x_axis_xyz == "Y":
+                        x_axis_point = x_axis_point[:, 1].T
+                    elif x_axis_xyz == "Z":
+                        x_axis_point = x_axis_point[:, 2].T
 
-            fig.add_trace(go.Scatter(x=time, y=point, mode='markers+lines', line=dict(color=lineColor), name=f"{selected_point_key} {selected_xyz}"))
-            
-
+            fig.add_trace(go.Scatter(x=x_axis_point , y=point, mode='markers+lines', line=dict(color=lineColor), name=f"{selected_point_key} {selected_xyz}"))
+            print(x_axis_point, point)
         fig.update_layout(title=title, xaxis_title=x_axis,
                                             yaxis_title=y_axis, height=height)
 
@@ -717,9 +752,21 @@ def dash():
                                             html.Button("Remove Graph",className='remove-graph-button', id={'type':'remove-button', 'index': f'{numOf2dGraphs}'}, style={'margin': '10px'})
                                         ]),
                                         ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'flex-direction': 'column'})) 
-             
-        return current_children, None, None, None, 300
+
+        # Need to add all the points to the dropdown
+        return current_children, None, None, None, 300, "frames", " "
         
+
+    @app.callback(
+    Output("x-axis-xyz-dropdown", "style"),
+    Input("x-axis-point-dropdown", "value")
+    )
+    def update_xyz_dropdown_style(selected_point):
+        if selected_point == "frames":
+            return {'display': 'none'}
+        else:
+            return {'display': 'block'}
+    
     @app.callback(
         Output({'type':'dynamically-added-graph-divs', 'index': MATCH}, 'children'),
         [Input({'type': 'remove-button', 'index': MATCH}, 'n_clicks')],
@@ -728,7 +775,6 @@ def dash():
         prevent_initial_call=True
     )
     def remove_element(n_clicks, child, current_children):
-        global removedTraces
 
         if n_clicks is not None:
             updated_children = [div for div in current_children if child[1]['props']['id'] == div['props']['id']]
@@ -804,19 +850,18 @@ def dash():
                                 filesList['AnatAx'] = os.path.abspath(os.path.join(root, name))
                             if "mocap" in filename.casefold():
                                 filesList['MocapData'] = os.path.abspath(os.path.join(root, name))
-            # read_Mitchell_data(frameRate)
-            global points, COMs, axes, vectors
+            global points, COMs, axes, vectors, points_for_2D_graphs
             global dfs, labels
             global frameLength
             global numOf2dGraphs
             numOf2dGraphs=0
-            points, COMs, axes, vectors = read_Mitchell_data(frameRate)
+            points, COMs, axes, vectors, points_for_2D_graphs = read_Mitchell_data(frameRate)
             dfs, labels = filter_points_to_draw(points, COMs)
             frameLength = len(dfs) * frameRate
             return list(points.keys())[0], list(points.keys()), frameLength, [] 
 
     #When giving code, set debug to False to make only one tkinter run needed
-    app.run_server(debug=True)
+    app.run_server(debug=False)
 
 figureX = ""
 figureY = ""
@@ -825,8 +870,6 @@ frameRate = 8
 
 global points, COMs, axes, vectors
 global dfs, labels
-global allLineGraphed
-
 
 root = tk.Tk()
 root.geometry("300x100")
