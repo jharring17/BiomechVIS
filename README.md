@@ -45,7 +45,7 @@ Both 3D and 2D graphs can then be manipulated to analyze data.
 
 Upon running, the following window will appear.
 
-![File Selector](imgs\file_loader.png)
+![Alt text](imgs\file_loader.png)
 
 Select Browse.  There are five mat files needed to run the program. Each mat file corresponds to one of the following: Points, Vectors, Anatomical Axis, Segment Center of Mass and Total Body Center of Mass.  ALL FIVE must be selected for the program to run.
 
@@ -75,7 +75,7 @@ The following sections describe the way each data type must be passed.
 
 Once the files have been selected, a local url will be displayed in the terminal.  
 
-![URL](imgs\url.png)
+![Alt text](imgs\url.png)
 
 Navigate to that url on any browser to view the GUI.
 
@@ -86,7 +86,7 @@ For either visualization, hover over a point to display information about it, su
 - ### 3D Visualizer
 
     The 3D visualizer (shown below) is designed to view the 3D plots over time
-    ![3D](imgs\3d.png)
+   ![Alt text](imgs\3d.png)
 
     To rotate the camera, click and drag anywhere withing the plot.  To zoom, scroll in or out. When hovering over the graph, the icons in the top right can also be used to control the camera more precisely.  For more information about these icons, please see: https://plotly.com/chart-studio-help/getting-to-know-the-plotly-modebar/
 
@@ -100,7 +100,7 @@ For either visualization, hover over a point to display information about it, su
 - ### 2D Visualizer
 
     The 2D visualizer (shown below) has two tools.  The top is the [Drag and Drop or Select Files Box](#drag-and-drop-or-select-files-box)  The bottom is the [Interactive Graph Selection for Time Series](#interactive-graph-selection-for-time-series)
-    ![2D](imgs\2d.png)
+    ![Alt text](imgs\2d.png)
 
     - #### Drag and Drop or Select Files Box
 
@@ -110,7 +110,7 @@ For either visualization, hover over a point to display information about it, su
 
         Select this box to add a time series plot. When clicked, the following prompt will appear.
 
-        ![Time Series](imgs\time_series.png)
+        ![Alt text](imgs\time_series.png)
 
         The graph title, x axis label and y axis label can all be set in the first three boxes.  
         
@@ -118,7 +118,7 @@ For either visualization, hover over a point to display information about it, su
 
         Use the leftmost dropdown to select the point to plot.  When the dropdown is clicked, you can type to search for the point name.  Point names are taken directly from imported data.
 
-        Use the second dropdown to select which dimension of the point to plot.  You can plot the X, Y or Z.  This dimension will be plotted on the y axis over time.  The time will be taken BASED ON THE FRAMERATE INPUT.  This means that if the framerate input is set to 10, the timeseries plot will also be subsampled at a frequency of every 10 frames.
+        Use the second dropdown to select which dimension of the point to plot.  You can plot the X, Y or Z.  This dimension will be plotted on the y axis over time or another point of data that you selected. If not point is selected for the X-axis, by default it will be time.
 
         The last box allows you to select the color of the line.
 
