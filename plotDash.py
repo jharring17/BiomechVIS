@@ -17,7 +17,7 @@ from tkinter import filedialog
 #TODO want a bar for the frame number
 #TODO plot axis
 # note we can use the add trace thing to make it so you can click to show points/groups and lines
-global numOf2dGraphs, points_for_2D_graphs
+global numOf2dGraphs, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs
 numOf2dGraphs= 0
 global newGraphNumOfLines
 newGraphNumOfLines=1
@@ -115,7 +115,12 @@ def read_Mitchell_data(framerate):
     for ax, temp in axes.items():
         undersampled_axes[ax] = {coord: data[::framerate] for coord, data in temp.items()}
 
-    return undersampled_final_points, undersampled_COMs, undersampled_axes, undersampled_vectors, final_points
+    all_points = final_points
+    all_points['TBCM'] = TBCM
+    all_points['TBCMVeloc'] = TBCMVeloc
+
+
+    return undersampled_final_points, undersampled_COMs, undersampled_axes, undersampled_vectors, all_points, final_points, {"TBCM": TBCM} , {"TBCMVeloc": TBCMVeloc}
 
 def filter_points_to_draw(points, COMs, p_filter=[]):
     '''Takes in all points and filters out those in the filter
@@ -335,10 +340,10 @@ def UploadAction(event=None):
         if "mocap" in filename.casefold():
             filesList['MocapData'] = filename
 
-    global points, COMs, axes, vectors, points_for_2D_graphs
+    global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs
     global dfs, labels
     global frameLength
-    points, COMs, axes, vectors, points_for_2D_graphs = read_Mitchell_data(frameRate)
+    points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs = read_Mitchell_data(frameRate)
     dfs, labels = filter_points_to_draw(points, COMs)
     frameLength = len(dfs) * frameRate
     root.destroy()
@@ -366,13 +371,6 @@ def dash():
 
         }
     ),
-    # Start of the Cutomize Graph Modal
-    dbc.Modal(id = "customizeGraphModal", children=[
-            dbc.ModalHeader("2D Graph Customizer"),
-            dbc.ModalBody("This is a basic modal. You can add any content here."),
-            dbc.ModalFooter(dbc.Button("Close", id="close-customize-modal", className="ml-auto")),
-            ], backdrop="static",
-    ), # Start of the New Graph Modal
     dbc.Modal(id = "newGraphModal", children=[
             dbc.ModalHeader("Add New 2D Graph", id='new-graph-modal-header'),
             dbc.ModalBody(id='new-graph-modal-body', children=[
@@ -397,7 +395,7 @@ def dash():
                     html.Div(id='new-graph-line-1-inputs',className='new-graph-line-inputs', children=[ 
                         dcc.Dropdown(
                             id={'type': 'new-graph-point-dropdown', 'index': f'{newGraphNumOfLines}'},
-                            options=[{"label": point, "value": point} for point in points.keys()],
+                            options=[{"label": point, "value": point} for point in mocap_data_2D_graphs.keys()],
                             value= list(points.keys())[0],
                             clearable=False,
                             style={'width': '100%', 'margin-right': '4px'}
@@ -418,10 +416,19 @@ def dash():
                 html.Div(id='new-graph-add-another-line-button-div', children=[dbc.Button("Add Another Line", id='new-graph-add-another-line-button')]),
                 html.H5("Select the data for the X-Axis:", id="new-graph-x-axis-title"),
                 html.P("(Default will be frames)"),
+                html.H6("Select the File:"),
+                dcc.Dropdown(
+                    id='x-axis-select-file',
+                    options=[{"label": "Mocap Data", "value": "Mocap"}, {"label": "TBCM", "value": "TBCM"}, {"label": "TBCMVeloc", "value": "TBCMVeloc"}],
+                    value='Mocap',
+                    clearable=False,
+                    style={'margin-bottom': '5px'}
+                ),
+                html.H6("Select the Data:"),
                 html.Div(id="new-graph-x-axis-dropdown-div", children= [
                         dcc.Dropdown(
                             id="x-axis-point-dropdown",
-                            options=[{"label": "Frames", "value": "frames"}] + [{"label": point, "value": point} for point in points.keys()],
+                            options=[{"label": "Frames", "value": "frames"}] + [{"label": point, "value": point} for point in mocap_data_2D_graphs.keys()],
                             value= "frames",
                             clearable=False,
                             style={'width': '100%', 'margin-right': '4px'}
@@ -469,7 +476,7 @@ def dash():
                         # Allow multiple files to be uploaded
                         multiple=True
                         ),
-                html.H4('Interactive Graph Selection for Time Series', style={"margin": '0px', 'margin-top': '5px'}),
+                html.H4('Interactive Graph Selection for Time Series', style={"margin": '0px', 'margin-top': '5px', 'margin-bottom': '5px'}),
                 ]),
                 html.Div(id='hidden-div', children=[
                     html.P('', id="chainCallback")
@@ -587,9 +594,9 @@ def dash():
         Input("3dFramerateInput", "value"),
         Input('upload-data', 'contents'))
     def draw_3d_graph(startingFrame, framerate, filecontents):
-        global points, COMs, axes, vectors
+        global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs
         global dfs, labels
-        points, COMs, axes, vectors, points_for_2D_graphs = read_Mitchell_data(framerate)
+        points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs = read_Mitchell_data(framerate)
         dfs, labels = filter_points_to_draw(points, COMs)
         main_plot = base_plot(dfs, labels, startingFrame // framerate)
         main_plot = draw_line(main_plot, [COMs[list(COMs.keys())[0]], points[list(points.keys())[0]]], [COMs[list(COMs.keys())[1]], points[list(points.keys())[1]]], startingFrame // framerate)
@@ -660,7 +667,7 @@ def dash():
                     html.Div(id={'type': 'new-graph-dynamic-inputs-div', 'index': f'{newGraphNumOfLines}'},className='new-graph-line-inputs', children=[ 
                         dcc.Dropdown(
                             id={'type': 'new-graph-point-dropdown', 'index': f'{newGraphNumOfLines}'},
-                            options=[{"label": point, "value": point} for point in points.keys()],
+                            options=[{"label": point, "value": point} for point in mocap_data_2D_graphs.keys()],
                             value= list(points.keys())[0],
                             clearable=False,
                             style={'width': '100%', 'margin-right': '4px'}
@@ -703,7 +710,7 @@ def dash():
     )
     def add_new_graph(submit_clicks, selected_point_keys, selected_xyzs, lineColors, x_axis_point, x_axis_xyz, title, x_axis, y_axis, height, current_children):
         global numOf2dGraphs
-        global points_for_2D_graphs
+        global all_points_for_2D_graphs
         fig = go.Figure()
 
         if title is None: title = "My New 2D Graph"
@@ -716,7 +723,7 @@ def dash():
             selected_xyz = selected_xyzs[i]
             lineColor = lineColors[i]
 
-            selected_point = points_for_2D_graphs[selected_point_key]  
+            selected_point = all_points_for_2D_graphs[selected_point_key]  
 
 
             if selected_xyz == "X":
@@ -730,7 +737,7 @@ def dash():
                 if(x_axis_point == "frames"):
                     x_axis_point = list(range(len(point)))
                 else:
-                    x_axis_point = points_for_2D_graphs[x_axis_point]
+                    x_axis_point = all_points_for_2D_graphs[x_axis_point]
                     if x_axis_xyz == "X":
                         x_axis_point = x_axis_point[:, 0].T
                     elif x_axis_xyz == "Y":
@@ -739,7 +746,6 @@ def dash():
                         x_axis_point = x_axis_point[:, 2].T
 
             fig.add_trace(go.Scatter(x=x_axis_point , y=point, mode='markers+lines', line=dict(color=lineColor), name=f"{selected_point_key} {selected_xyz}"))
-            print(x_axis_point, point)
         fig.update_layout(title=title, xaxis_title=x_axis,
                                             yaxis_title=y_axis, height=height)
 
@@ -748,14 +754,25 @@ def dash():
             current_children.append(html.Div(className='dynamically-added-graph-divs', id={'type':'dynamically-added-graph-divs', 'index':f'{numOf2dGraphs}'}, children=[
                                         dcc.Graph(figure=fig),
                                         html.Div(className='dynaimically-add-button-div', id={'type': 'button-div', 'index':f'{numOf2dGraphs}'}, children=[
-                                            html.Button("Customize Graph", className='customize-graph-button', id={'type': 'customize-button', 'index':f'{numOf2dGraphs}'}, style={'margin':'10px'}),
                                             html.Button("Remove Graph",className='remove-graph-button', id={'type':'remove-button', 'index': f'{numOf2dGraphs}'}, style={'margin': '10px'})
                                         ]),
                                         ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'flex-direction': 'column'})) 
 
         # Need to add all the points to the dropdown
         return current_children, None, None, None, 300, "frames", " "
-        
+    
+    @app.callback(
+    Output("x-axis-point-dropdown", "options"),
+    [Input("x-axis-select-file", "value")]
+    )
+    def update_x_axis_options(selected_value):
+        if selected_value == "Mocap":
+            return [{"label": "Frames", "value": "frames"}] + [{"label": point, "value": point} for point in mocap_data_2D_graphs.keys()]
+        elif selected_value == "TBCM":
+            return [{"label": "Frames", "value": "frames"}] + [{"label": point, "value": point} for point in TBCM_2D_graphs.keys()]
+        elif selected_value == "TBCMVeloc":
+            return [{"label": "Frames", "value": "frames"}] + [{"label": point, "value": point} for point in TBCMVeloc_2D_graphs.keys()]
+
 
     @app.callback(
     Output("x-axis-xyz-dropdown", "style"),
@@ -850,12 +867,12 @@ def dash():
                                 filesList['AnatAx'] = os.path.abspath(os.path.join(root, name))
                             if "mocap" in filename.casefold():
                                 filesList['MocapData'] = os.path.abspath(os.path.join(root, name))
-            global points, COMs, axes, vectors, points_for_2D_graphs
+            global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs
             global dfs, labels
             global frameLength
             global numOf2dGraphs
             numOf2dGraphs=0
-            points, COMs, axes, vectors, points_for_2D_graphs = read_Mitchell_data(frameRate)
+            points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs = read_Mitchell_data(frameRate)
             dfs, labels = filter_points_to_draw(points, COMs)
             frameLength = len(dfs) * frameRate
             return list(points.keys())[0], list(points.keys()), frameLength, [] 
