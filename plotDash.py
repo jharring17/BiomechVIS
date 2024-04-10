@@ -53,14 +53,12 @@ def load_from_mat(filenames=None, data={}, loaded=None):
             else: # it's a variable
                 data[field] = loaded[0,0][field]
 
-    print(data.keys())
     return data
 
 def load_from_mat2(filenames):
     noDataInit = True
     for filename in filenames:
         fileData = sio.loadmat(filename, struct_as_record=True)['Data']
-        print(type(fileData))
         if (noDataInit):
             data = fileData
             noDataInit = False
@@ -190,8 +188,8 @@ def draw_anat_ax(plot, axes, COMs, frame, a_filter=[]):
             if name not in a_filter:
                 froms.append(COMs[name])
                 tos.append(axes[name]['X'])
-        except:
-            print("draw x anat error")
+        except Exception as error:
+            print("draw x anat error", type(error).__name__)
     draw_line(plot, froms, tos, frame, 'red', name='AnatAx X')
 
     tos = []
@@ -199,8 +197,8 @@ def draw_anat_ax(plot, axes, COMs, frame, a_filter=[]):
         try:
             if name not in a_filter:
                 tos.append(axes[name]['Y'])
-        except:
-            print("draw y anat error")
+        except Exception as error:
+            print("draw y anat error", type(error).__name__)
     draw_line(plot, froms, tos, frame, 'green', name='AnatAx Y')
 
     tos = []
@@ -208,8 +206,8 @@ def draw_anat_ax(plot, axes, COMs, frame, a_filter=[]):
         try:
             if name not in a_filter:
                 tos.append(axes[name]['Z'])
-        except:
-            print("draw z anat error")
+        except Exception as error:
+            print("draw z anat error", type(error).__name__)
     draw_line(plot, froms, tos, frame, 'blue', name='AnatAx Z')
 
 
@@ -321,8 +319,8 @@ def draw_line(plot, froms, tos, startingFrame, cs='red', name='lines'):
             frame.append(y)
             frame.append(z)
             frames.append(frame)
-        except:
-            print("line drawing error")
+        except Exception as error:
+            print("line drawing error", type(error).__name__)
 
     try:
         plot.add_trace(go.Scatter3d(
@@ -331,8 +329,8 @@ def draw_line(plot, froms, tos, startingFrame, cs='red', name='lines'):
             z=frames[0][2],
             mode='lines', line=dict(color=cs), name=name
         ))
-    except:
-        print("continued line error")
+    except Exception as error:
+        print("continued line error", type(error).__name__)
 
     #one pass per frame for all lines O(n) where n = #frames
     for i, frame in enumerate(plot.frames):
@@ -340,8 +338,8 @@ def draw_line(plot, froms, tos, startingFrame, cs='red', name='lines'):
             temp = list(frame.data)
             temp.append(go.Scatter3d(x=frames[i][0], y=frames[i][1], z=frames[i][2], mode='lines', line=dict(color=cs)))
             frame.data = temp
-        except:
-            print("index error")
+        except Exception as error:
+            print("index error", type(error).__name__)
 
     return plot
 
@@ -549,6 +547,32 @@ def dash():
 
         }),
         html.Div([  # Div for the Actual 3D Visualization
+            html.Div([
+                dcc.Checklist(
+                    [
+                        {
+                            "label": html.Div(['Points'], style={'font-size': 20}),
+                            "value": "Points", "disabled": True
+                        },
+                        {
+                            "label": html.Div(['Line'], style={'font-size': 20}),
+                            "value": "Line",
+                        },
+                        {
+                            "label": html.Div(['Anatomical Axes'], style={'font-size': 20}),
+                            "value": "Anatomical Axes",
+                        },
+                        {
+                            "label": html.Div(['Vector'], style={'font-size': 20}),
+                            "value": "Vector",
+                        },
+                    ], value=['Points'],
+                    inline=True,
+                    labelStyle={"display": "inline-block", "align-items": "center", "width" : "20%"},
+                    id='3dGenChecklist'
+                ),
+                html.Button('Generate 3D Graph', id='3dGenButton', n_clicks=0)
+            ]),
             html.Div([ # Div of the 3D graph Only
                 dcc.Loading(
                     id="loading-graph4",
@@ -633,18 +657,23 @@ def dash():
     # Callback for drawing the 3D Plot
     @app.callback(
         Output("graph4", "figure"), 
+        Input("3dGenButton", 'n_clicks'),
         Input("3dInputSlider", "value"),
         Input("3dFramerateInput", "value"),
-        Input('upload-data', 'contents'))
-    def draw_3d_graph(startingFrame, framerate, filecontents):
+        Input('upload-data', 'contents'),
+        State('3dGenChecklist', 'value'))
+    def draw_3d_graph(n_clicks, startingFrame, framerate, filecontents, checklistValues):
         global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs
         global dfs, labels
         points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs = read_Mitchell_data(framerate)
         dfs, labels = filter_points_to_draw(points, COMs)
         main_plot = base_plot(dfs, labels, startingFrame // framerate)
-        main_plot = draw_line(main_plot, [COMs[list(COMs.keys())[0]], points[list(points.keys())[0]]], [COMs[list(COMs.keys())[1]], points[list(points.keys())[1]]], startingFrame // framerate)
-        main_plot = draw_anat_ax(main_plot, axes, COMs, startingFrame // framerate)
-        main_plot = draw_vectors(main_plot, vectors, startingFrame // framerate)
+        if 'Line' in checklistValues:
+            main_plot = draw_line(main_plot, [COMs[list(COMs.keys())[0]], points[list(points.keys())[0]]], [COMs[list(COMs.keys())[1]], points[list(points.keys())[1]]], startingFrame // framerate)
+        if 'Anatomical Axes' in checklistValues:
+            main_plot = draw_anat_ax(main_plot, axes, COMs, startingFrame // framerate)
+        if 'Vector' in checklistValues:
+            main_plot = draw_vectors(main_plot, vectors, startingFrame // framerate)
         return main_plot
 
     @app.callback(
@@ -895,25 +924,41 @@ def dash():
     def update_output(list_of_contents, list_of_names, list_of_dates):
         if list_of_contents is not None:
             global filesList, removedTraces
+            TBCMnew = False
+            TBCMVelocNew = False
+            AnatAxNew = False
+            SegComNew = False
+            MocapNew = False
             #https://stackoverflow.com/questions/1124810/how-can-i-find-path-to-given-file
             for filename in list_of_names:
                 for root, dirs, files in os.walk(os.getcwd()):
                     for name in files:
                         if name == filename:
                             if "tbcm_" in filename.casefold():
-                                filesList['TBCM'] = []
+                                if not TBCMnew:
+                                    filesList['TBCM'] = []
                                 filesList['TBCM'].append(os.path.abspath(os.path.join(root, name)))
+                                TBCMnew = True
                             if "tbcmveloc" in filename.casefold():
-                                filesList['TBCMVeloc'] = []
+                                if not TBCMVelocNew:
+                                    filesList['TBCMVeloc'] = []
                                 filesList['TBCMVeloc'].append(os.path.abspath(os.path.join(root, name)))
+                                TBCMVelocNew = True
                             if "segcom" in filename.casefold():
-                                filesList['SegCOM'] = []
+                                if not SegComNew:
+                                    filesList['SegCOM'] = []
                                 filesList['SegCOM'].append(os.path.abspath(os.path.join(root, name)))
+                                SegComNew = True
                             if "anatax" in filename.casefold():
-                                filesList['AnatAx'] = []
+                                if not AnatAxNew:
+                                    filesList['AnatAx'] = []
                                 filesList['AnatAx'].append(os.path.abspath(os.path.join(root, name)))
+                                AnatAxNew = True
                             if "mocap" in filename.casefold():
+                                if not MocapNew:
+                                    filesList['MocapData'] = []
                                 filesList['MocapData'].append(os.path.abspath(os.path.join(root, name)))
+                                MocapNew = True
             global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs
             global dfs, labels
             global frameLength
@@ -940,7 +985,7 @@ root.geometry("300x100")
 root.config(bg = "#d6d6d6")
 root.title("BiomechOS")
 root.resizable(False,False)
-text = tk.Label(root, text = "Selct Files to Use:", font=("Times New Roman", "12"), padx=5, pady=5, bg="#d6d6d6")
+text = tk.Label(root, text = "Select Files to Use:", font=("Times New Roman", "12"), padx=5, pady=5, bg="#d6d6d6")
 text.pack(side="left")
 button = tk.Button(root, text='Browse', relief=tk.RAISED, bd=2, command=UploadAction)
 button.pack(side="left")
