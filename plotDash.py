@@ -23,28 +23,49 @@ global newGraphNumOfLines
 newGraphNumOfLines=1
 global filesList
 filesList = {}
-filesList = {'AnatAx' : f'', 'SegCOM': f'', 
-             'TBCM' : f'', 'TBCMVeloc' : f'',
-             'MocapData' : f''}
+filesList = {'AnatAx' : [], 'SegCOM': [], 
+             'TBCM' : [], 'TBCMVeloc' : [],
+             'MocapData' : []}
 
-def load_from_mat(filename=None, data={}, loaded=None):
+# Change each field to be an array; append to the array when adding fields 
+# Wipe arrays clean when changing files from other thing
+# Load mat will combine them, what will sci thing do?
+# in load mat, jsut do it for each component of array, and merge the dicts; prob a method
+# For TBCM and other thing, append array together 
+
+def load_from_mat(filenames=None, data={}, loaded=None):
     '''Turn .mat file to nested dict of all values
     Pulled from https://stackoverflow.com/questions/62995712/extracting-mat-files-with-structs-into-python'''
-    if filename:
-        vrs = sio.whosmat(filename)
-        #name = vrs[0][0]
-        loaded = sio.loadmat(filename,struct_as_record=True)
-        if 'Data' in loaded.keys():
-            loaded = loaded["Data"] #Data is labeled differently, so just specified data field - Nick
+    for filename in filenames:
+        if filename:
+            vrs = sio.whosmat(filename)
+            #name = vrs[0][0]
+            loaded = sio.loadmat(filename,struct_as_record=True)
+            if 'Data' in loaded.keys():
+                loaded = loaded["Data"] #Data is labeled differently, so just specified data field - Nick
 
-    whats_inside = loaded.dtype.fields
-    fields = list(whats_inside.keys())
-    for field in fields:
-        if len(loaded[0,0][field].dtype) > 0: # it's a struct
-            data[field] = {}
-            data[field] = load_from_mat(data=data[field], loaded=loaded[0,0][field])
-        else: # it's a variable
-            data[field] = loaded[0,0][field]
+        whats_inside = loaded.dtype.fields
+        fields = list(whats_inside.keys())
+        for field in fields:
+            if len(loaded[0,0][field].dtype) > 0: # it's a struct
+                data[field] = {}
+                data[field] = load_from_mat(data=data[field], loaded=loaded[0,0][field])
+            else: # it's a variable
+                data[field] = loaded[0,0][field]
+
+    print(data.keys())
+    return data
+
+def load_from_mat2(filenames):
+    noDataInit = True
+    for filename in filenames:
+        fileData = sio.loadmat(filename, struct_as_record=True)['Data']
+        print(type(fileData))
+        if (noDataInit):
+            data = fileData
+            noDataInit = False
+        else:
+            data = np.concatenate((data, fileData)) #We dont care about order, just add em together
     return data
 
 def read_Mitchell_data(framerate):
@@ -58,9 +79,10 @@ def read_Mitchell_data(framerate):
     # AnatAx => key = seg name, val = 3x3xN array for location so [frame][x_axis,y_axis,z_axis][x,y,z]
     AnatAx = load_from_mat(filesList['AnatAx'], {})
     #TBCMVeloc => need to read seperately.  It just has a data array which is Nx3 for locations
-    TBCMVeloc = sio.loadmat(filesList['TBCMVeloc'], struct_as_record=True)['Data']
+    TBCMVeloc = load_from_mat2(filesList['TBCMVeloc'])
+
     #TBCM => need to read seperately.  It just has a data array which is Nx3 for locations 
-    TBCM  = sio.loadmat(filesList['TBCM'], struct_as_record=True)['Data']
+    TBCM  = load_from_mat2(filesList['TBCM'])
     # SegCOM => key = seg name, val = Nx3 array for location (only first value populated?)
     SegCOM = load_from_mat(filesList['SegCOM'], {})
 
@@ -98,10 +120,13 @@ def read_Mitchell_data(framerate):
         com = COMs[ax]
         temp = {}
         for i, line in enumerate(AnatAx[ax]): #x line then y then z
-            x = np.atleast_2d(line[0]).T*.1 + np.atleast_2d(com[:, 0]).T 
-            y = np.atleast_2d(line[1]).T*.1 + np.atleast_2d(com[:, 1]).T 
-            z = np.atleast_2d(line[2]).T*.1 + np.atleast_2d(com[:, 2]).T 
-            temp[a[i]] = np.append(np.append(x, y, 1), z, 1)
+            try:
+                x = np.atleast_2d(line[0]).T*.1 + np.atleast_2d(com[:, 0]).T 
+                y = np.atleast_2d(line[1]).T*.1 + np.atleast_2d(com[:, 1]).T 
+                z = np.atleast_2d(line[2]).T*.1 + np.atleast_2d(com[:, 2]).T 
+                temp[a[i]] = np.append(np.append(x, y, 1), z, 1)
+            except:
+                print("AnatAx Error")
         axes[ax] = temp
 
     
@@ -161,21 +186,30 @@ def draw_anat_ax(plot, axes, COMs, frame, a_filter=[]):
     froms = []
     tos = []
     for name in COMs:
-        if name not in a_filter:
-            froms.append(COMs[name])
-            tos.append(axes[name]['X'])
+        try:
+            if name not in a_filter:
+                froms.append(COMs[name])
+                tos.append(axes[name]['X'])
+        except:
+            print("draw x anat error")
     draw_line(plot, froms, tos, frame, 'red', name='AnatAx X')
 
     tos = []
     for name in COMs:   
-        if name not in a_filter:
-            tos.append(axes[name]['Y'])
+        try:
+            if name not in a_filter:
+                tos.append(axes[name]['Y'])
+        except:
+            print("draw y anat error")
     draw_line(plot, froms, tos, frame, 'green', name='AnatAx Y')
 
     tos = []
     for name in COMs:
-        if name not in a_filter:
-            tos.append(axes[name]['Z'])
+        try:
+            if name not in a_filter:
+                tos.append(axes[name]['Z'])
+        except:
+            print("draw z anat error")
     draw_line(plot, froms, tos, frame, 'blue', name='AnatAx Z')
 
 
@@ -268,37 +302,46 @@ def draw_line(plot, froms, tos, startingFrame, cs='red', name='lines'):
     #point list is [from, to, None] in a loop
     frames = []
     for n in range(startingFrame, len(froms[0])): #for every frame
-        x = []
-        y = []
-        z = []
-        frame = []
-        for i in range(len(froms)): #for every set of points 
-            x.append(froms[i][n][0])
-            x.append(tos[i][n][0])
-            y.append(froms[i][n][1])
-            y.append(tos[i][n][1])
-            z.append(froms[i][n][2])
-            z.append(tos[i][n][2])
-            x.append(None)
-            y.append(None)
-            z.append(None)
-        frame.append(x)
-        frame.append(y)
-        frame.append(z)
-        frames.append(frame)
+        try:
+            x = []
+            y = []
+            z = []
+            frame = []
+            for i in range(len(froms)): #for every set of points 
+                x.append(froms[i][n][0])
+                x.append(tos[i][n][0])
+                y.append(froms[i][n][1])
+                y.append(tos[i][n][1])
+                z.append(froms[i][n][2])
+                z.append(tos[i][n][2])
+                x.append(None)
+                y.append(None)
+                z.append(None)
+            frame.append(x)
+            frame.append(y)
+            frame.append(z)
+            frames.append(frame)
+        except:
+            print("line drawing error")
 
-    plot.add_trace(go.Scatter3d(
-        x=frames[0][0],
-        y=frames[0][1],
-        z=frames[0][2],
-        mode='lines', line=dict(color=cs), name=name
-    ))
+    try:
+        plot.add_trace(go.Scatter3d(
+            x=frames[0][0],
+            y=frames[0][1],
+            z=frames[0][2],
+            mode='lines', line=dict(color=cs), name=name
+        ))
+    except:
+        print("continued line error")
 
     #one pass per frame for all lines O(n) where n = #frames
     for i, frame in enumerate(plot.frames):
-        temp = list(frame.data)
-        temp.append(go.Scatter3d(x=frames[i][0], y=frames[i][1], z=frames[i][2], mode='lines', line=dict(color=cs)))
-        frame.data = temp
+        try:
+            temp = list(frame.data)
+            temp.append(go.Scatter3d(x=frames[i][0], y=frames[i][1], z=frames[i][2], mode='lines', line=dict(color=cs)))
+            frame.data = temp
+        except:
+            print("index error")
 
     return plot
 
@@ -330,15 +373,15 @@ def UploadAction(event=None):
             #https://stackoverflow.com/questions/1124810/how-can-i-find-path-to-given-file
     for filename in filenames:
         if "tbcm_" in filename.casefold():
-            filesList['TBCM'] = filename
+            filesList['TBCM'].append(filename)
         if "tbcmveloc" in filename.casefold():
-            filesList['TBCMVeloc'] = filename
+            filesList['TBCMVeloc'].append(filename)
         if "segcom" in filename.casefold():
-            filesList['SegCOM'] = filename
+            filesList['SegCOM'].append(filename)
         if "anatax" in filename.casefold():
-            filesList['AnatAx'] = filename
+            filesList['AnatAx'].append(filename)
         if "mocap" in filename.casefold():
-            filesList['MocapData'] = filename
+            filesList['MocapData'].append(filename)
 
     global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs
     global dfs, labels
@@ -858,15 +901,19 @@ def dash():
                     for name in files:
                         if name == filename:
                             if "tbcm_" in filename.casefold():
-                                filesList['TBCM'] = os.path.abspath(os.path.join(root, name))
+                                filesList['TBCM'] = []
+                                filesList['TBCM'].append(os.path.abspath(os.path.join(root, name)))
                             if "tbcmveloc" in filename.casefold():
-                                filesList['TBCMVeloc'] = os.path.abspath(os.path.join(root, name))
+                                filesList['TBCMVeloc'] = []
+                                filesList['TBCMVeloc'].append(os.path.abspath(os.path.join(root, name)))
                             if "segcom" in filename.casefold():
-                                filesList['SegCOM'] = os.path.abspath(os.path.join(root, name))
+                                filesList['SegCOM'] = []
+                                filesList['SegCOM'].append(os.path.abspath(os.path.join(root, name)))
                             if "anatax" in filename.casefold():
-                                filesList['AnatAx'] = os.path.abspath(os.path.join(root, name))
+                                filesList['AnatAx'] = []
+                                filesList['AnatAx'].append(os.path.abspath(os.path.join(root, name)))
                             if "mocap" in filename.casefold():
-                                filesList['MocapData'] = os.path.abspath(os.path.join(root, name))
+                                filesList['MocapData'].append(os.path.abspath(os.path.join(root, name)))
             global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs
             global dfs, labels
             global frameLength
