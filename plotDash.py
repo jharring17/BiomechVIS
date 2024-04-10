@@ -17,7 +17,7 @@ from tkinter import filedialog
 #TODO want a bar for the frame number
 #TODO plot axis
 # note we can use the add trace thing to make it so you can click to show points/groups and lines
-global numOf2dGraphs, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs
+global numOf2dGraphs, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs, selected_y_axis_point_2D
 numOf2dGraphs= 0
 global newGraphNumOfLines
 newGraphNumOfLines=1
@@ -381,10 +381,11 @@ def UploadAction(event=None):
         if "mocap" in filename.casefold():
             filesList['MocapData'].append(filename)
 
-    global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs
+    global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs, selected_y_axis_point_2D
     global dfs, labels
     global frameLength
     points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs = read_Mitchell_data(frameRate)
+    selected_y_axis_point_2D = mocap_data_2D_graphs
     dfs, labels = filter_points_to_draw(points, COMs)
     frameLength = len(dfs) * frameRate
     root.destroy()
@@ -429,6 +430,15 @@ def dash():
                     ]),
                 ]),
                 html.H5("Select the data for the Y-Axis:"),
+
+                html.H6("Select the File:"),
+                dcc.Dropdown(
+                    id='y-axis-select-file',
+                    options=[{"label": "Mocap Data", "value": "Mocap"}, {"label": "TBCM", "value": "TBCM"}, {"label": "TBCMVeloc", "value": "TBCMVeloc"}],
+                    value='Mocap',
+                    clearable=False,
+                    style={'margin-bottom': '5px'}
+                ),
                 html.Div(id='new-graph-add-line-dropdowns-div', children = [ # Div that hold dropdown
                     html.Div(id='new-graph-line-1-title', children=[
                         html.H6("Line:", id='new-graph-modal-line-1-text'),
@@ -436,8 +446,8 @@ def dash():
                     html.Div(id='new-graph-line-1-inputs',className='new-graph-line-inputs', children=[ 
                         dcc.Dropdown(
                             id={'type': 'new-graph-point-dropdown', 'index': f'{newGraphNumOfLines}'},
-                            options=[{"label": point, "value": point} for point in mocap_data_2D_graphs.keys()],
-                            value= list(points.keys())[0],
+                            options=[{"label": point, "value": point} for point in selected_y_axis_point_2D.keys()],
+                            value= list(selected_y_axis_point_2D.keys())[0],
                             clearable=False,
                             style={'width': '100%', 'margin-right': '4px'}
                         ),
@@ -689,33 +699,33 @@ def dash():
     def toggle_add_new_modal(n_clicks_open, n_clicks_close, n_clicks_submit, is_open, current_children):
         global newGraphNumOfLines
         if n_clicks_open or n_clicks_close or n_clicks_submit:
-            if newGraphNumOfLines != 1:
-                newGraphNumOfLines = 1
-                new_children = [html.Div([
-                html.Div(id='new-graph-line-1-title', children=[
-                html.H6("Line:", id='new-graph-modal-line-1-text'),
-                ]),
-                html.Div(id='new-graph-line-1-inputs',className='new-graph-line-inputs', children=[ 
-                    dcc.Dropdown(
-                        id={'type': "new-graph-point-dropdown", 'index': f'{newGraphNumOfLines}'},
-                        options=[{"label": point, "value": point} for point in points.keys()],
-                        value= list(points.keys())[0],
-                        clearable=False,
-                        style={'width': '100%', 'margin-right': '4px'}
-                    ),
-                    dcc.Dropdown(
-                        id={'type': 'new-graph-xyz-dropdown', 'index': f'{newGraphNumOfLines}'},
-                        options=[{"label": "X", "value": "X"},
-                                {"label": "Y", "value": "Y"},
-                                {"label": "Z", "value": "Z"}],
-                        value="X",
-                        clearable=False,
-                        style={'width': '10%', 'margin-right': '4px'}
-                    ), dbc.Input(type="color", id={'type': 'new-graph-color-picker', 'index': f'{newGraphNumOfLines}'},value="#000000",style={"width": '10%', 'height': '36px'}),
-                    dbc.Button("Remove", id='new-graph-original-remove-button', className='new-graph-remove-line-button')])])]
+            # if newGraphNumOfLines != 1:
+            #     newGraphNumOfLines = 1
+            #     new_children = [html.Div([
+            #     html.Div(id='new-graph-line-1-title', children=[
+            #     html.H6("Line:", id='new-graph-modal-line-1-text'),
+            #     ]),
+            #     html.Div(id='new-graph-line-1-inputs',className='new-graph-line-inputs', children=[ 
+            #         dcc.Dropdown(
+            #             id={'type': "new-graph-point-dropdown", 'index': f'{newGraphNumOfLines}'},
+            #             options=[{"label": point, "value": point} for point in points.keys()],
+            #             value= list(points.keys())[0],
+            #             clearable=False,
+            #             style={'width': '100%', 'margin-right': '4px'}
+            #         ),
+            #         dcc.Dropdown(
+            #             id={'type': 'new-graph-xyz-dropdown', 'index': f'{newGraphNumOfLines}'},
+            #             options=[{"label": "X", "value": "X"},
+            #                     {"label": "Y", "value": "Y"},
+            #                     {"label": "Z", "value": "Z"}],
+            #             value="X",
+            #             clearable=False,
+            #             style={'width': '10%', 'margin-right': '4px'}
+            #         ), dbc.Input(type="color", id={'type': 'new-graph-color-picker', 'index': f'{newGraphNumOfLines}'},value="#000000",style={"width": '10%', 'height': '36px'}),
+            #         dbc.Button("Remove", id='new-graph-original-remove-button', className='new-graph-remove-line-button')])])]
                 
-                return not is_open, new_children, 'frames', 'X'
-            else:
+            #     return not is_open, new_children, 'frames', 'X'
+            # else:
                 return not is_open, current_children, 'frames', 'X'        
         else:
             return is_open, current_children, 'frames', 'X'
@@ -739,8 +749,8 @@ def dash():
                     html.Div(id={'type': 'new-graph-dynamic-inputs-div', 'index': f'{newGraphNumOfLines}'},className='new-graph-line-inputs', children=[ 
                         dcc.Dropdown(
                             id={'type': 'new-graph-point-dropdown', 'index': f'{newGraphNumOfLines}'},
-                            options=[{"label": point, "value": point} for point in mocap_data_2D_graphs.keys()],
-                            value= list(points.keys())[0],
+                            options=[{"label": point, "value": point} for point in selected_y_axis_point_2D.keys()],
+                            value= list(selected_y_axis_point_2D.keys())[0],
                             clearable=False,
                             style={'width': '100%', 'margin-right': '4px'}
                         ),
@@ -830,12 +840,24 @@ def dash():
                                         ]),
                                         ], style={'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'flex-direction': 'column'})) 
 
-        # Need to add all the points to the dropdown
         return current_children, None, None, None, 300, "frames", " "
     
     @app.callback(
+    Output({'type': "new-graph-point-dropdown", 'index': MATCH}, "options", allow_duplicate=True),
+    Output({'type': "new-graph-point-dropdown", 'index': MATCH}, "value", allow_duplicate=True),
+    [Input("y-axis-select-file", "value")], prevent_initial_call='initial_duplicate'
+    )
+    def update_y_axis_options(selected_value):
+        if selected_value == "Mocap":
+            return [{"label": point, "value": point} for point in mocap_data_2D_graphs.keys()], list(mocap_data_2D_graphs.keys())[0]
+        elif selected_value == "TBCM":
+            return [{"label": point, "value": point} for point in TBCM_2D_graphs.keys()],  list(TBCM_2D_graphs.keys())[0]
+        elif selected_value == "TBCMVeloc":
+            return [{"label": point, "value": point} for point in TBCMVeloc_2D_graphs.keys()],  list(TBCMVeloc_2D_graphs.keys())[0]
+
+    @app.callback(
     Output("x-axis-point-dropdown", "options"),
-    [Input("x-axis-select-file", "value")]
+    [Input("x-axis-select-file", "value")], prevent_initial_call=True
     )
     def update_x_axis_options(selected_value):
         if selected_value == "Mocap":
@@ -959,12 +981,13 @@ def dash():
                                     filesList['MocapData'] = []
                                 filesList['MocapData'].append(os.path.abspath(os.path.join(root, name)))
                                 MocapNew = True
-            global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs
+            global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs, selected_y_axis_point_2D
             global dfs, labels
             global frameLength
             global numOf2dGraphs
             numOf2dGraphs=0
             points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs = read_Mitchell_data(frameRate)
+            selected_y_axis_point_2D = mocap_data_2D_graphs
             dfs, labels = filter_points_to_draw(points, COMs)
             frameLength = len(dfs) * frameRate
             return list(points.keys())[0], list(points.keys()), frameLength, [] 
