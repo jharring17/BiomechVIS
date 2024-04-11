@@ -645,33 +645,33 @@ def dash():
     def toggle_add_new_modal(n_clicks_open, n_clicks_close, n_clicks_submit, is_open, current_children):
         global newGraphNumOfLines
         if n_clicks_open or n_clicks_close or n_clicks_submit:
-            # if newGraphNumOfLines != 1:
-            #     newGraphNumOfLines = 1
-            #     new_children = [html.Div([
-            #     html.Div(id='new-graph-line-1-title', children=[
-            #     html.H6("Line:", id='new-graph-modal-line-1-text'),
-            #     ]),
-            #     html.Div(id='new-graph-line-1-inputs',className='new-graph-line-inputs', children=[ 
-            #         dcc.Dropdown(
-            #             id={'type': "new-graph-point-dropdown", 'index': f'{newGraphNumOfLines}'},
-            #             options=[{"label": point, "value": point} for point in points.keys()],
-            #             value= list(points.keys())[0],
-            #             clearable=False,
-            #             style={'width': '100%', 'margin-right': '4px'}
-            #         ),
-            #         dcc.Dropdown(
-            #             id={'type': 'new-graph-xyz-dropdown', 'index': f'{newGraphNumOfLines}'},
-            #             options=[{"label": "X", "value": "X"},
-            #                     {"label": "Y", "value": "Y"},
-            #                     {"label": "Z", "value": "Z"}],
-            #             value="X",
-            #             clearable=False,
-            #             style={'width': '10%', 'margin-right': '4px'}
-            #         ), dbc.Input(type="color", id={'type': 'new-graph-color-picker', 'index': f'{newGraphNumOfLines}'},value="#000000",style={"width": '10%', 'height': '36px'}),
-            #         dbc.Button("Remove", id='new-graph-original-remove-button', className='new-graph-remove-line-button')])])]
+            if newGraphNumOfLines != 1:
+                newGraphNumOfLines = 1
+                new_children = [html.Div([
+                html.Div(id='new-graph-line-1-title', children=[
+                html.H6("Line:", id='new-graph-modal-line-1-text'),
+                ]),
+                html.Div(id='new-graph-line-1-inputs',className='new-graph-line-inputs', children=[ 
+                    dcc.Dropdown(
+                        id={'type': "new-graph-point-dropdown", 'index': f'{newGraphNumOfLines}'},
+                        options=[{"label": point, "value": point} for point in selected_y_axis_point_2D.keys()],
+                        value= list(selected_y_axis_point_2D.keys())[0],
+                        clearable=False,
+                        style={'width': '100%', 'margin-right': '4px'}
+                    ),
+                    dcc.Dropdown(
+                        id={'type': 'new-graph-xyz-dropdown', 'index': f'{newGraphNumOfLines}'},
+                        options=[{"label": "X", "value": "X"},
+                                {"label": "Y", "value": "Y"},
+                                {"label": "Z", "value": "Z"}],
+                        value="X",
+                        clearable=False,
+                        style={'width': '10%', 'margin-right': '4px'}
+                    ), dbc.Input(type="color", id={'type': 'new-graph-color-picker', 'index': f'{newGraphNumOfLines}'},value="#000000",style={"width": '10%', 'height': '36px'}),
+                    dbc.Button("Remove", id='new-graph-original-remove-button', className='new-graph-remove-line-button')])])]
                 
-            #     return not is_open, new_children, 'frames', 'X'
-            # else:
+                return not is_open, new_children, 'frames', 'X'
+            else:
                 return not is_open, current_children, 'frames', 'X'        
         else:
             return is_open, current_children, 'frames', 'X'
@@ -736,20 +736,25 @@ def dash():
         State('new-graph-height-input', 'value'),
         State("normal-graphs-div", "children")], prevent_initial_call=True
     )
-    def add_new_graph(submit_clicks, selected_point_keys, selected_xyzs, lineColors, x_axis_point, x_axis_xyz, title, x_axis, y_axis, height, current_children):
+    def add_new_graph(submit_clicks, selected_point_keys, selected_xyzs, lineColors, x_axis_point, x_axis_xyz, title, x_axis_title, y_axis_title, height, current_children):
         global numOf2dGraphs
         global all_points_for_2D_graphs
         fig = go.Figure()
+        y_title_not_given = False
 
-        if title is None: title = "My New 2D Graph"
-        if x_axis is None: x_axis = "X"
-        if y_axis is None: y_axis = "Y"
+        if y_axis_title is None: 
+            y_title_not_given = True
+            y_axis_title = ""
         if height is None: height = 300
 
         for i in range(len(selected_point_keys)):
             selected_point_key = selected_point_keys[i]
             selected_xyz = selected_xyzs[i]
             lineColor = lineColors[i]
+            if y_title_not_given:
+                y_axis_title = y_axis_title + selected_point_key + "_" + selected_xyz
+                if i < len(selected_point_keys)-1:
+                    y_axis_title += ", "
 
             selected_point = all_points_for_2D_graphs[selected_point_key]  
 
@@ -763,8 +768,11 @@ def dash():
 
             if(i==0):
                 if(x_axis_point == "frames"):
+                    if x_axis_title is None: x_axis_title = "Frames"
                     x_axis_point = list(range(len(point)))
                 else:
+                    if x_axis_title is None: x_axis_title = x_axis_point + "_" + x_axis_xyz
+
                     x_axis_point = all_points_for_2D_graphs[x_axis_point]
                     if x_axis_xyz == "X":
                         x_axis_point = x_axis_point[:, 0].T
@@ -774,8 +782,12 @@ def dash():
                         x_axis_point = x_axis_point[:, 2].T
 
             fig.add_trace(go.Scatter(x=x_axis_point , y=point, mode='markers+lines', line=dict(color=lineColor), name=f"{selected_point_key} {selected_xyz}"))
-        fig.update_layout(title=title, xaxis_title=x_axis,
-                                            yaxis_title=y_axis, height=height)
+        
+        if title is None: title = y_axis_title + " Plotted Over " + x_axis_title
+
+        fig.update_layout(title=title, xaxis_title=x_axis_title,
+                                            yaxis_title=y_axis_title, height=height)
+        
 
         if submit_clicks:
             numOf2dGraphs = numOf2dGraphs + 1 
