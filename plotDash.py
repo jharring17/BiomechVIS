@@ -76,14 +76,26 @@ def read_Mitchell_data(framerate):
     #Note: The data dict in load_from_math seems to carry over somehow? If I don't set it to {} Then SegCOM will change once we read MocapData for example - Gavin
     #folder_path = sys.argv[1]
     # AnatAx => key = seg name, val = 3x3xN array for location so [frame][x_axis,y_axis,z_axis][x,y,z]
-    AnatAx = load_from_mat(filesList['AnatAx'], {})
+    if len(filesList['AnatAx']) == 0:
+        AnatAx = {}
+    else:
+        AnatAx = load_from_mat(filesList['AnatAx'], {})
     #TBCMVeloc => need to read seperately.  It just has a data array which is Nx3 for locations
-    TBCMVeloc = load_from_mat2(filesList['TBCMVeloc'])
+    if len(filesList['TBCMVeloc']) == 0:
+        TBCMVeloc = []
+    else:
+        TBCMVeloc = load_from_mat2(filesList['TBCMVeloc'])
 
     #TBCM => need to read seperately.  It just has a data array which is Nx3 for locations 
-    TBCM  = load_from_mat2(filesList['TBCM'])
+    if len(filesList['TBCM']) == 0:
+        TBCM = []
+    else:
+        TBCM  = load_from_mat2(filesList['TBCM'])
     # SegCOM => key = seg name, val = Nx3 array for location (only first value populated?)
-    SegCOM = load_from_mat(filesList['SegCOM'], {})
+    if len(filesList['SegCOM']) == 0:
+        SegCOM = {}
+    else:
+        SegCOM = load_from_mat(filesList['SegCOM'], {})
 
     # MocapData => key = point name, val = Nx3 array for location
     MocapData = load_from_mat(filesList['MocapData'], {})
@@ -108,8 +120,11 @@ def read_Mitchell_data(framerate):
     #TODO change from hardcoded
     vectors['TBCM'] = [[], []]
     
+    noVectors = False
     vectors['TBCM'][0] = TBCM
-    vectors['TBCM'][1] = TBCM + TBCMVeloc
+    if (len(TBCM) != 0 and len(TBCMVeloc) != 0):
+        vectors['TBCM'][1] = TBCM + TBCMVeloc
+        noVectors = True
 
     # add points for AnatAx to invis points 
     # structure is key is name points to x,y,z dicts 
@@ -133,7 +148,10 @@ def read_Mitchell_data(framerate):
     # Undersample COMs
     undersampled_COMs = {key: value[::framerate] for key, value in COMs.items()}
     # Undersample vectors
-    undersampled_vectors = {key: [value[0][::framerate], value[1][::framerate]] for key, value in vectors.items()}
+    if (noVectors):
+        undersampled_vectors = {key: [value[0][::framerate], value[1][::framerate]] for key, value in vectors.items()}
+    else:
+        undersampled_vectors = {}
     # Undersample axes
     undersampled_axes = {}
     for ax, temp in axes.items():
