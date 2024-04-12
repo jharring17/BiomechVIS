@@ -18,7 +18,7 @@ from dash.exceptions import PreventUpdate
 #TODO want a bar for the frame number
 #TODO plot axis
 # note we can use the add trace thing to make it so you can click to show points/groups and lines
-global numOf2dGraphs, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs, selected_y_axis_point_2D
+global numOf2dGraphs, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs, selected_y_axis_point_2D, file_list_2D
 numOf2dGraphs= 0
 global newGraphNumOfLines
 newGraphNumOfLines=1
@@ -75,7 +75,10 @@ def read_Mitchell_data(framerate):
     #TODO update to take general file names in given folder
     #Note: The data dict in load_from_math seems to carry over somehow? If I don't set it to {} Then SegCOM will change once we read MocapData for example - Gavin
     #folder_path = sys.argv[1]
-    # AnatAx => key = seg name, val = 3x3xN array for location so [frame][x_axis,y_axis,z_axis][x,y,z]
+
+    files_2D = [{"label": "Mocap Data", "value": "Mocap"}]
+
+    # AnatAx => key = seg name, val = 3x3xN array for location so [frame][x_axis,y_axis,z_axis][x,y,z]   
     if len(filesList['AnatAx']) == 0:
         AnatAx = {}
     else:
@@ -85,12 +88,14 @@ def read_Mitchell_data(framerate):
         TBCMVeloc = []
     else:
         TBCMVeloc = load_from_mat2(filesList['TBCMVeloc'])
+        files_2D.append({"label": "TBCMVeloc", "value": "TBCMVeloc"})
 
     #TBCM => need to read seperately.  It just has a data array which is Nx3 for locations 
     if len(filesList['TBCM']) == 0:
         TBCM = []
     else:
         TBCM  = load_from_mat2(filesList['TBCM'])
+        files_2D.append({"label": "TBCM", "value": "TBCM"})
     # SegCOM => key = seg name, val = Nx3 array for location (only first value populated?)
     if len(filesList['SegCOM']) == 0:
         SegCOM = {}
@@ -161,8 +166,7 @@ def read_Mitchell_data(framerate):
     all_points['TBCM'] = TBCM
     all_points['TBCMVeloc'] = TBCMVeloc
 
-
-    return undersampled_final_points, undersampled_COMs, undersampled_axes, undersampled_vectors, all_points, final_points, {"TBCM": TBCM} , {"TBCMVeloc": TBCMVeloc}
+    return undersampled_final_points, undersampled_COMs, undersampled_axes, undersampled_vectors, all_points, final_points, {"TBCM": TBCM} , {"TBCMVeloc": TBCMVeloc}, files_2D
 
 def filter_points_to_draw(points, COMs, p_filter=[]):
     '''Takes in all points and filters out those in the filter
@@ -387,6 +391,9 @@ def UploadAction(event=None):
     filenames = filedialog.askopenfilenames()
 
     global filesList
+    filesList = {'AnatAx' : [], 'SegCOM': [], 
+             'TBCM' : [], 'TBCMVeloc' : [],
+             'MocapData' : []}
             #https://stackoverflow.com/questions/1124810/how-can-i-find-path-to-given-file
     for filename in filenames:
         if "tbcm_" in filename.casefold():
@@ -400,10 +407,10 @@ def UploadAction(event=None):
         if "mocap" in filename.casefold():
             filesList['MocapData'].append(filename)
 
-    global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs, selected_y_axis_point_2D
+    global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs, selected_y_axis_point_2D, file_list_2D
     global dfs, labels
     global frameLength
-    points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs = read_Mitchell_data(frameRate)
+    points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs, file_list_2D = read_Mitchell_data(frameRate)
     selected_y_axis_point_2D = mocap_data_2D_graphs
     dfs, labels = filter_points_to_draw(points, COMs)
     frameLength = len(dfs) * frameRate
@@ -453,7 +460,7 @@ def dash():
                 html.H6("Select the File:"),
                 dcc.Dropdown(
                     id='y-axis-select-file',
-                    options=[{"label": "Mocap Data", "value": "Mocap"}, {"label": "TBCM", "value": "TBCM"}, {"label": "TBCMVeloc", "value": "TBCMVeloc"}],
+                    options=file_list_2D,
                     value='Mocap',
                     clearable=False,
                     style={'margin-bottom': '5px'}
@@ -489,7 +496,7 @@ def dash():
                 html.H6("Select the File:"),
                 dcc.Dropdown(
                     id='x-axis-select-file',
-                    options=[{"label": "Mocap Data", "value": "Mocap"}, {"label": "TBCM", "value": "TBCM"}, {"label": "TBCMVeloc", "value": "TBCMVeloc"}],
+                    options=file_list_2D,
                     value='Mocap',
                     clearable=False,
                     style={'margin-bottom': '5px'}
@@ -637,9 +644,9 @@ def dash():
         Input('upload-data', 'contents'),
         State('3dGenChecklist', 'value'))
     def draw_3d_graph(n_clicks, startingFrame, framerate, filecontents, checklistValues):
-        global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs
+        global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs, file_list_2D
         global dfs, labels
-        points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs = read_Mitchell_data(framerate)
+        points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs, file_list_2D = read_Mitchell_data(framerate)
         dfs, labels = filter_points_to_draw(points, COMs)
         main_plot = base_plot(dfs, labels, startingFrame // framerate)
         if 'Line' in checklistValues:
@@ -991,6 +998,8 @@ def dash():
         Output({"type": "new-graph-point-dropdown", "index": '1'}, "options"),
         Output('chainCallback', 'children'),
         Output("normal-graphs-div", 'children'),
+        Output('y-axis-select-file', 'options'),
+        Output('x-axis-select-file', 'options'),
         Input('upload-data', 'contents'),
         State('upload-data', 'filename'),
         State('upload-data', 'last_modified'),
@@ -998,6 +1007,9 @@ def dash():
     def update_output(list_of_contents, list_of_names, list_of_dates):
         if list_of_contents is not None:
             global filesList, removedTraces
+            filesList = {'AnatAx' : [], 'SegCOM': [], 
+             'TBCM' : [], 'TBCMVeloc' : [],
+             'MocapData' : []}
             TBCMnew = False
             TBCMVelocNew = False
             AnatAxNew = False
@@ -1033,16 +1045,16 @@ def dash():
                                     filesList['MocapData'] = []
                                 filesList['MocapData'].append(os.path.abspath(os.path.join(root, name)))
                                 MocapNew = True
-            global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs, selected_y_axis_point_2D
+            global points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs, selected_y_axis_point_2D, file_list_2D
             global dfs, labels
             global frameLength
             global numOf2dGraphs
             numOf2dGraphs=0
-            points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs = read_Mitchell_data(frameRate)
+            points, COMs, axes, vectors, all_points_for_2D_graphs, mocap_data_2D_graphs, TBCM_2D_graphs, TBCMVeloc_2D_graphs, file_list_2D = read_Mitchell_data(frameRate)
             selected_y_axis_point_2D = mocap_data_2D_graphs
             dfs, labels = filter_points_to_draw(points, COMs)
             frameLength = len(dfs) * frameRate
-            return list(points.keys())[0], list(points.keys()), frameLength, [] 
+            return list(points.keys())[0], list(points.keys()), frameLength, [], file_list_2D, file_list_2D 
 
     #When giving code, set debug to False to make only one tkinter run needed
     app.run_server(debug=False)
