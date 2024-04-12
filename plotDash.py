@@ -78,7 +78,6 @@ def read_Mitchell_data(framerate):
 
     files_2D = [{"label": "Mocap Data", "value": "Mocap"}]
 
-    print(filesList)
     # AnatAx => key = seg name, val = 3x3xN array for location so [frame][x_axis,y_axis,z_axis][x,y,z]   
     if len(filesList['AnatAx']) == 0:
         AnatAx = {}
