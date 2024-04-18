@@ -72,7 +72,8 @@ The following sections describe the way each data type must be passed.
 
     A single N x 3 matrix representing the total body center of mass.  The matrix is represented the same way as all [points](#points).
 
-* It is important to note that the name of the file is not important, however the name of the structure that the data is stored in needs to be 'Data'. The renaming of the structure can be done in MatLab. See the pictures below on how to check the name of your structure and where to look to rename it. Please make sure to save the structure name under 'Workspace', right-click the 'Data' and 'Save As' to save the new structure name under a new MAT file.
+- #### Issues with Data importing:
+    * It is important to note that the name of the file is not important, however the name of the structure that the data is stored in needs to be 'Data'. The renaming of the structure can be done in MatLab. See the pictures below on how to check the name of your structure and where to look to rename it. Please make sure to save the structure name under 'Workspace', right-click the 'Data' and 'Save As' to save the new structure name under a new MAT file.
 
 ![Data](imgs/data.PNG)
 
@@ -84,7 +85,7 @@ Once the files have been selected, a local url will be displayed in the terminal
 
 ![URL](imgs/url.png)
 
-Navigate to that url on any browser to view the GUI. Note that if you cannot see the entirity of the display when in your browser please zoom out by using hitting both (Ctrl) and (-) keys.
+Navigate to that url on any browser to view the GUI. Note that if you cannot see the entirity of the display when in your browser please zoom out by using hitting both (Ctrl) + (-) keys.
 
 On the left half of the screen is the [3D Visualizer](#3d-visualizer) and on the right half is the [2D Visualizer](#2d-visualizer)
 
@@ -144,7 +145,7 @@ For either visualization, hover over a point to display information about it, su
 
 - ### Running Multiple Trials at Once
 
-        Due to limitations of Plotly and the displaying of the 2D graphs, running of multiple trials should be done by running multiple instances of the program. Full implementation of visualizing multiple trials is done by data type not file. In the 2D graph the program cannot determine which files points are connected to in its current state.
+    * Due to limitations of Plotly and the displaying of the 2D graphs, running of multiple trials should be done by running multiple instances of the program. Full implementation of visualizing multiple trials is done by data type not file. In the 2D graph the program cannot determine which files points are connected to in its current state.
 
 ## Contributing
 
