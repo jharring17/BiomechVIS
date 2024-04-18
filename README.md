@@ -1,6 +1,6 @@
-# BiomechOS
+# BiomechVis
 
-Within the research space, there are few tools that can be leveraged by labs for data visualization and analysis. This often leaves researchers to create their own tool to visualize their data. With BiomechOS we hope to solve the problem of standardization of data visualization tools for lab settings. BiomechOS will be capable of receiving a variety of import data, creating time series graphs in 2D space, generating 3D visualizations using a point and line system, and allowing user interaction with the visualized data. This will allow researchers to effectively view their data and deepen their analysis.
+Biomechanics is a relatively newer field of research, and there is not a lot of software infrastructure that allows researchers to interact with 3D motion capture data. Free and open-source visualization software options are rare and limited. With BiomechVis we hope to offer accessible data visualization tools for biomechanical research. BiomechVis is capable of receiving processed data in the form of .mat files, creating 2D time series graphs, and generating 3D and 2D visualizations using point and line graphs. This system allows researchers to better view and interact with their data to deepen their analyses.
 
 ## Table of Contents
 
@@ -17,6 +17,7 @@ Within the research space, there are few tools that can be leveraged by labs for
     * [2D Visualizer](#2d-visualizer)
         - [Drag and Drop or Select Files Box](#drag-and-drop-or-select-files-box)
         - [Interactive Graph Selection for Time Series](#interactive-graph-selection-for-time-series)
+    * [Running Multiple Trials at Once](#running-multiple-trials-at-once)
 -   [Contributing](#contributing)
 
 ## Installation
@@ -35,7 +36,7 @@ After installing the necessary dependencies, execute the program:
 python plotDash.py
 ```
 
-Note: Please ensure the terminal is currently set to the directory that contains the python script.  To do so, run cd "path to folder" ex: cd C:\Users\Name\Documents\BiomechOS
+Note: Please ensure the terminal is currently set to the directory that contains the python script.  To do so, run cd "path to folder" ex: cd C:\Users\Name\Documents\BiomechVis
 
 From here, you can select mat files to import into the project using the file selector.
 
@@ -47,7 +48,7 @@ Upon running, the following window will appear.
 
 ![File Selector](imgs/file_loader.png)
 
-Select Browse.  There are five mat files needed to run the program. Each mat file corresponds to one of the following: Points, Vectors, Anatomical Axis, Segment Center of Mass and Total Body Center of Mass.  ALL FIVE must be selected for the program to run.
+Select Browse.  There are five mat files needed to run the program. Each mat file corresponds to one of the following: Points, Vectors, Anatomical Axis, Segment Center of Mass and Total Body Center of Mass.  At least points need to be put in for the visualizations to work, this is a plotly limitation.
 
 The following sections describe the way each data type must be passed.
 
@@ -71,13 +72,19 @@ The following sections describe the way each data type must be passed.
 
     A single N x 3 matrix representing the total body center of mass.  The matrix is represented the same way as all [points](#points).
 
+* It is important to note that the name of the file is not important, however the name of the structure that the data is stored in needs to be 'Data'. The renaming of the structure can be done in MatLab. See the pictures below on how to check the name of your structure and where to look to rename it. Please make sure to save the structure name under 'Workspace', right-click the 'Data' and 'Save As' to save the new structure name under a new MAT file.
+
+![Data](imgs/data.PNG)
+
+![Workspace](imgs/workspace.PNG)
+
 ## Viewing and Controling the Visualization
 
 Once the files have been selected, a local url will be displayed in the terminal.  
 
 ![URL](imgs/url.png)
 
-Navigate to that url on any browser to view the GUI.
+Navigate to that url on any browser to view the GUI. Note that if you cannot see the entirity of the display when in your browser please zoom out by using hitting both (Ctrl) and (-) keys.
 
 On the left half of the screen is the [3D Visualizer](#3d-visualizer) and on the right half is the [2D Visualizer](#2d-visualizer)
 
@@ -90,12 +97,15 @@ For either visualization, hover over a point to display information about it, su
 
     To rotate the camera, click and drag anywhere withing the plot.  To zoom, scroll in or out. When hovering over the graph, the icons in the top right can also be used to control the camera more precisely.  For more information about these icons, please see: https://plotly.com/chart-studio-help/getting-to-know-the-plotly-modebar/
 
-    The Framerate input is the sub sampling rate.  If the framerate input is set to 10, every 10th frame will be drawn in the 3D plot.  This sampling will start from the current frame
+    The Framerate input is the sub sampling rate.  If the framerate input is set to 10, every 10th frame will be drawn in the 3D plot.  This sampling will start from the current frame.
 
     The Current Frame can be used to create a plot of a specific frame.  When set, the 3D plot will be redrawn with the first displayed image being the "Current frame".  The Current Frame also functions as the start frame.  The displayed 3D plot will not be able to go before the current frame.  When restarted, the plot will return to the frame set in Current Frame.
 
     The Frame Slider is also provided for control over the Current Frame.  When set, the Frame Slider will update the Current Frame with the value selected
 
+    Choose which data types you would like to be displayed by checking the boxes above the graph, this can be changed at any time and the graph can be regenerated by clicking the box
+
+    * Note: The displaying of multiple data types is done by data type, not by file. If multiple of one data type is put in the displaying of mutliple trials will be done, however there are some limitations when choosing which trial to display individually per file. 
 
 - ### 2D Visualizer
 
@@ -104,7 +114,7 @@ For either visualization, hover over a point to display information about it, su
 
     - #### Drag and Drop or Select Files Box
 
-        Selecting this box will open a new file explorer prompt.  Either select the five new files or drag them into the box to add this new trial to the data.  Again ALL FIVE files must be selected to add this trial.
+        Selecting this box will open a new file explorer prompt.  Either select new files or drag them into the box to add this new trial to the data.  Again at least points need to be chosen. The data you display can be changed at any time during usage.
 
     - #### Interactive Graph Selection for Time Series
 
@@ -112,26 +122,29 @@ For either visualization, hover over a point to display information about it, su
 
         ![Time Series](imgs/time_series.png)
 
-        The graph title, x axis label and y axis label can all be set in the first three boxes.  
+        The graph title, x axis label and y axis label can all be set in the first three boxes. If one is not set it will automatically be filled in by the selected points.
         
         The height controls the total height (in pixels) of the visualization
 
+        Note that only points and vectors can be visualized on 2D graphs.
+
         Use the leftmost dropdown to select the point to plot.  When the dropdown is clicked, you can type to search for the point name.  Point names are taken directly from imported data.
 
-        Use the second dropdown to select which dimension of the point to plot.  You can plot the X, Y or Z.  This dimension will be plotted on the y axis over time or another point of data that you selected. If not point is selected for the X-axis, by default it will be time.
+        Use the second dropdown to select which dimension of the point to plot.  You can plot the X, Y or Z.  This dimension will be plotted on the y axis over time or another point of data that you selected. If not point is selected for the X-axis, by default it will be time displayed in frames.
 
         The last box allows you to select the color of the line.
 
         Click "Add Another Line" to add another line on this 2D plot.
 
-        At this time the "Customize Graph" button has not been implemented.
-
-        Click "Remove Graph" to delete the above graph
+        At this time the "Customize Graph" button has not been implemented. If there is something you want to change on a 2D graph you must click "Remove Graph" to delete the graph and remake it.
 
         Note: You can add as many plots or lines to a single plot as you want.
 
         Note: When hovering over a graph, the icons in the top right can also be used to control the graph more precisely.  For more information about these icons, please see: https://plotly.com/chart-studio-help/getting-to-know-the-plotly-modebar/
 
+- ### Running Multiple Trials at Once
+
+        Due to limitations of Plotly and the displaying of the 2D graphs, running of multiple trials should be done by running multiple instances of the program. Full implementation of visualizing multiple trials is done by data type not file. In the 2D graph the program cannot determine which files points are connected to in its current state.
 
 ## Contributing
 
