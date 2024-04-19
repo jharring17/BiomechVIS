@@ -277,7 +277,6 @@ def base_plot(dfs, labels, frame):
         ],
         layout=go.Layout(#TODO Setting that size of the plot seems to make it not responsive to a change in window size.
                         scene = scene_scaling,
-                        title="BiomechOS",
                         margin=dict(l=0, r=0, b=0, t=0, pad=4),
                         updatemenus=[dict(type="buttons",
                                             x=0.9,
@@ -428,7 +427,7 @@ def dash():
         href='/assets/styles.css'  # Adjust the path to your CSS file
     ),
         html.Header(
-        html.H1("BiomechOS", style={'textAlign': 'center'}),
+        html.H1("BiomechVis", style={'textAlign': 'center'}),
         style={
             'background-color': '#4da2f7',  # Set the background color of the header
             'padding': '0px',
@@ -1070,7 +1069,7 @@ global dfs, labels
 root = tk.Tk()
 root.geometry("300x100")
 root.config(bg = "#d6d6d6")
-root.title("BiomechOS")
+root.title("BiomechVis")
 root.resizable(False,False)
 text = tk.Label(root, text = "Select Files to Use:", font=("Times New Roman", "12"), padx=5, pady=5, bg="#d6d6d6")
 text.pack(side="left")
