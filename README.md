@@ -72,8 +72,8 @@ The following sections describe the way each data type must be passed.
 
     A single N x 3 matrix representing the total body center of mass.  The matrix is represented the same way as all [points](#points).
 
-#### Issues with Data Importing:
-    It is important to note that the name of the file is not important, however the name of the structure that the data is stored in needs to be 'Data'. The renaming of the structure can be done in MatLab. See the pictures below on how to check the name of your structure and where to look to rename it. Please make sure to save the structure name under 'Workspace', right-click the 'Data' and 'Save As' to save the new structure name under a new MAT file.
+- #### Issues with Data Importing:
+    * It is important to note that the name of the file is not important, however the name of the structure that the data is stored in needs to be 'Data'. The renaming of the structure can be done in MatLab. See the pictures below on how to check the name of your structure and where to look to rename it. Please make sure to save the structure name under 'Workspace', right-click the 'Data' and 'Save As' to save the new structure name under a new MAT file.
 
 ![Data](imgs/data.PNG)
 
